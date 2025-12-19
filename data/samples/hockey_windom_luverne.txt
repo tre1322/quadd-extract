@@ -1,0 +1,129 @@
+Windom
+
+1 - 9 Final
+Luverne
+1 2 3 OT1 T Windom 0 0 1 0 1 Luverne 5 3 1 0 9
+FILTERS » Windom Luverne Goals Penalties Shots Blocked Shots Faceoffs Hits Turnovers Goalie Change
+Game Totals
+SCORING 1 2 3 OT1 T Windom 0 0 1 0 1 Luverne 5 3 1 0 9
+POWER PLAYS Windom 0 for 1 (0.0%) Luverne 1 for 3 (33.33%)
+SHOTS 1 2 3 OT1 T Windom 0 4 6 - 10 Luverne 17 37 7 - 61
+PENALTIES Windom 6 minutes on 3 infractions Luverne 2 minutes on 1 infraction
+Scoring Summary
+* 
+* 1st Period
+* WINDOM
+* LUVERN
+* 
+* 0:55
+* Luverne
+* #8 Landyn Lais (even strength) (#21 Maddux Domagala, #6 Blake Sauer)
+* 0
+* 1
+* 
+* 8:37
+* Luverne
+* #8 Landyn Lais (even strength) (#4 Benjamin Hartquist, #9 Maddox Miller)
+* 0
+* 2
+* 
+* 9:14
+* Luverne
+* #21 Maddux Domagala (even strength) (#8 Landyn Lais, #2 Jaxon Lais)
+* 0
+* 3
+* 
+* 16:20
+* Luverne
+* #21 Maddux Domagala (even strength) (#2 Jaxon Lais, #4 Benjamin Hartquist)
+* 0
+* 4
+* 
+* 16:58
+* Luverne
+* #6 Blake Sauer (even strength) (#8 Landyn Lais, #4 Benjamin Hartquist)
+* 0
+* 5
+* 
+* 2nd Period
+* WINDOM
+* LUVERN
+* 
+* 6:59
+* Luverne
+* #22 Will Bergman (even strength) (#14 Ricky Rogers, #9 Maddox Miller)
+* 0
+* 6
+* 
+* 7:39
+* Luverne
+* #4 Benjamin Hartquist (even strength) (#22 Will Bergman, #7 Colton Haubrich)
+* 0
+* 7
+* 
+* 13:35
+* Luverne
+* #21 Maddux Domagala (even strength) (#6 Blake Sauer)
+* 0
+* 8
+* 
+* 3rd Period
+* WINDOM
+* LUVERN
+* 
+* 10:33
+* Windom
+* #43 Isaiah Adams (even strength) (empty net)
+* 1
+* 8
+* 
+* 16:45
+* Luverne
+* #6 Blake Sauer (power play) (#2 Jaxon Lais)
+* 1
+* 9
+* 
+* OT1 Period
+* WINDOM
+* LUVERN
+* 
+* NO SCORE
+* 1
+* 9
+Penalty Summary
+* 
+* 1st Period
+* 
+* 2:50
+* Windom
+* #10 Wyatt Soderholm Tripping - Minor (2:00)
+* 
+* 14:41
+* Windom
+* #20 Gavin Mcnamara High-Sticking - Minor (2:00)
+* 
+* 2nd Period
+* 
+* NO PENALTY
+* 
+* 3rd Period
+* 
+* 8:24
+* Luverne
+* #6 Blake Sauer Cross-Checking - Minor (2:00)
+* 
+* 15:05
+* Windom
+* #43 Isaiah Adams Tripping - Minor (2:00)
+* 
+* OT1 Period
+* 
+* NO PENALTY
+ Windom Skaters
+# Name G A PTS SOG PIM + / - 2 Weston Murray 0 0 0 0 0 0 4 Nash Dietz 0 0 0 0 0 0 6 Carson Low 0 0 0 0 0 0 8 Ethan Mcnea 0 0 0 0 0 0 10 Wyatt Soderholm 0 0 0 0 2 0 13 Jessy Gentry 0 0 0 0 0 0 14 Ayden Endreson 0 0 0 0 0 0 16 Jonah Lohse 0 0 0 0 0 0 20 Gavin Mcnamara 0 0 0 0 2 0 21 Bodi Parker 0 0 0 0 0 0 23 Cormac Raderstorf 0 0 0 0 0 0 26 Jackson Veenker 0 0 0 0 0 0 27 Mason Buckentin 0 0 0 0 0 0 42 Landon Stewart 0 0 0 0 0 0 43 Isaiah Adams 1 0 1 1 2 0 Totals 1 0 1 10 6
+ Luverne Skaters
+# Name G A PTS SOG PIM + / - 2 Jaxon Lais 0 3 3 0 0 0 4 Benjamin Hartquist 1 3 4 1 0 0 5 Zeke Frahm 0 0 0 0 0 0 6 Blake Sauer 2 2 4 2 2 0 7 Colton Haubrich 0 1 1 0 0 0 8 Landyn Lais 2 2 4 2 0 0 9 Maddox Miller 0 2 2 0 0 0 10 Korbin Miles 0 0 0 0 0 0 11 Brady Palaschak-Smeins 0 0 0 0 0 0 12 Mallachi Domagala 0 0 0 0 0 0 14 Ricky Rogers 0 1 1 0 0 0 17 Ian Thorson 0 0 0 0 0 0 18 Kale Ver Steeg 0 0 0 0 0 0 19 Trenton Lass 0 0 0 0 0 0 21 Maddux Domagala 3 1 4 3 0 0 22 Will Bergman 1 1 2 1 0 0 26 Jude Hoven 0 0 0 0 0 0 28 Saul Hoven 0 0 0 0 0 0 Totals 9 16 25 61 2
+ Windom Goalies
+# Name MIN SOG GA SV SV % 1 Kole Espenson 51:00 61 9 52 .852 Totals 51:00 61 9 52 .852
+ Luverne Goalies
+# Name MIN SOG GA SV SV % 40 Gavin Hoven 51:00 9 0 9 1.000 Totals 51:00 10 1 9 .900

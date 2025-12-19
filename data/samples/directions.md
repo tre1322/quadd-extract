@@ -1,0 +1,8 @@
+Let's test end-to-end. I have a basketball PDF (Windom-Worthington.pdf, located here C:\Users\trevo\quadd-extract\data\samples\Windom-Worthington.pdf).
+1.	First, start the server and show me how to access it
+2.	Help me test the /api/processors/learn endpoint with my PDF and this expected output:
+Worthington High School.................22 58 — 80
+WHS.....................................51 53 — 104
+Worthington High School (FG-FT-TP): Gach 2-0-6; Okony 10-3-23; Morke 3-1-7; Aklog 0-0-0; Noeno 0-0-0; Meinders 0-0-0; Meyer 4-0-8; Landeros 0-0-0; Swinea 11-4-26; Schroeder 3-2-8; Shiferaw 1-0-2. FG: 34-72 (47%). FT: 10-19 (53%). 3Pt. FG: 2-15 (13%) — Gach 2. Fouls: 11. Fouled out: None. Rebs: 47. TOs: 23.
+WHS (FG-FT-TP): Ogeka 8-2-18; Joyce 4-0-12; Rossow 6-0-18; Erickson 3-0-8; Walinga 0-0-0; Tietz 8-0-18; Rupp 0-0-0; Steffen 1-0-2; Bleess 5-2-13; Meyer 0-0-0; Serreyn 6-0-12; Kleven 1-0-3. FG: 42-88 (48%). FT: 4-12 (33%). 3Pt. FG: 16-39 (41%) — Joyce 4, Rossow 6, Erickson 2, Tietz 2, Bleess, Kleven. Fouls: 23. Fouled out: Serreyn. Rebs: 47. TOs: 12.
+Then test applying that learned processor to the same PDF (or another basketball PDF, like C:\Users\trevo\quadd-extract\data\samples\GBB report.pdf)"

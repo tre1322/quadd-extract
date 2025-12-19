@@ -1,0 +1,190 @@
+{
+    "id": "df02f539-2443-471b-a80c-caa2669c8789",
+    "name": "windom_bball_v2",
+    "document_type": "basketball",
+    "version": 1,
+    "created_at": "2025-12-19T03:17:14.375462",
+    "updated_at": "2025-12-19T03:18:50.744593",
+    "success_count": 0,
+    "failure_count": 1,
+    "last_used": "2025-12-19T03:18:50.742876",
+    "anchors": [
+        {
+            "name": "box_score_header",
+            "patterns": [
+                "Box Score Report"
+            ],
+            "pattern_type": "contains",
+            "location_hint": "top",
+            "required": true
+        },
+        {
+            "name": "game_info",
+            "patterns": [
+                "WHS vs Worthington"
+            ],
+            "pattern_type": "contains",
+            "location_hint": "top",
+            "required": true
+        },
+        {
+            "name": "period_stats_header",
+            "patterns": [
+                "Period Stats"
+            ],
+            "pattern_type": "contains",
+            "location_hint": "top_third",
+            "required": true
+        },
+        {
+            "name": "team_stats_header",
+            "patterns": [
+                "Team Stats"
+            ],
+            "pattern_type": "contains",
+            "location_hint": "middle",
+            "required": true
+        },
+        {
+            "name": "whs_team",
+            "patterns": [
+                "WHS"
+            ],
+            "pattern_type": "exact",
+            "location_hint": "period_table",
+            "required": true
+        },
+        {
+            "name": "wor_team",
+            "patterns": [
+                "WOR"
+            ],
+            "pattern_type": "exact",
+            "location_hint": "period_table",
+            "required": true
+        },
+        {
+            "name": "final_score",
+            "patterns": [
+                "Final"
+            ],
+            "pattern_type": "exact",
+            "location_hint": "period_table",
+            "required": true
+        }
+    ],
+    "regions": [
+        {
+            "name": "period_scores",
+            "start_anchor": "period_stats_header",
+            "end_anchor": "team_stats_header",
+            "region_type": "table"
+        },
+        {
+            "name": "team_statistics",
+            "start_anchor": "team_stats_header",
+            "end_anchor": null,
+            "region_type": "table"
+        }
+    ],
+    "extraction_ops": [
+        {
+            "field_path": "game.date",
+            "source": "anchor.game_info.text",
+            "transform": "strip"
+        },
+        {
+            "field_path": "game.result",
+            "source": "anchor.game_info.text",
+            "transform": "strip"
+        },
+        {
+            "field_path": "visiting_team.name",
+            "source": "anchor.wor_team.text",
+            "transform": "strip"
+        },
+        {
+            "field_path": "visiting_team.period1",
+            "source": "region.period_scores.column[1]",
+            "transform": "to_int"
+        },
+        {
+            "field_path": "visiting_team.period2",
+            "source": "region.period_scores.column[2]",
+            "transform": "to_int"
+        },
+        {
+            "field_path": "visiting_team.final_score",
+            "source": "region.period_scores.column[3]",
+            "transform": "to_int"
+        },
+        {
+            "field_path": "home_team.name",
+            "source": "anchor.whs_team.text",
+            "transform": "strip"
+        },
+        {
+            "field_path": "home_team.period1",
+            "source": "region.period_scores.column[1]",
+            "transform": "to_int"
+        },
+        {
+            "field_path": "home_team.period2",
+            "source": "region.period_scores.column[2]",
+            "transform": "to_int"
+        },
+        {
+            "field_path": "home_team.final_score",
+            "source": "region.period_scores.column[3]",
+            "transform": "to_int"
+        },
+        {
+            "field_path": "home_team.fg_percentage",
+            "source": "region.team_statistics.column[1]",
+            "transform": "strip"
+        },
+        {
+            "field_path": "visiting_team.fg_percentage",
+            "source": "region.team_statistics.column[2]",
+            "transform": "strip"
+        },
+        {
+            "field_path": "home_team.three_fg_made_attempted",
+            "source": "region.team_statistics.column[1]",
+            "transform": "strip"
+        },
+        {
+            "field_path": "visiting_team.three_fg_made_attempted",
+            "source": "region.team_statistics.column[2]",
+            "transform": "strip"
+        }
+    ],
+    "validations": [
+        {
+            "name": "Both teams present",
+            "check": "'home_team' in data and 'away_team' in data",
+            "severity": "error"
+        },
+        {
+            "name": "Team names not empty",
+            "check": "data.get('home_team', {}).get('name') and data.get('away_team', {}).get('name')",
+            "severity": "error"
+        },
+        {
+            "name": "Final scores present",
+            "check": "'final_score' in data.get('home_team', {}) and 'final_score' in data.get('away_team', {})",
+            "severity": "error"
+        },
+        {
+            "name": "Period scores sum to final (home)",
+            "check": "sum(data.get('home_team', {}).get('period_scores', [])) == data.get('home_team', {}).get('final_score', 0)",
+            "severity": "warning"
+        },
+        {
+            "name": "Period scores sum to final (away)",
+            "check": "sum(data.get('away_team', {}).get('period_scores', [])) == data.get('away_team', {}).get('final_score', 0)",
+            "severity": "warning"
+        }
+    ],
+    "template_id": "basketball_windom"
+}

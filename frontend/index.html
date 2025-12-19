@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stats Formatter - Turn Box Scores into Newspaper Text</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        
+        /* Smooth transitions */
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Drop zone styles */
+        .drop-zone { transition: all 0.2s ease; }
+        .drop-zone.active { border-color: #3b82f6; background-color: #eff6ff; transform: scale(1.01); }
+        
+        /* Card hover */
+        .template-card { transition: all 0.2s ease; }
+        .template-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px -5px rgba(0,0,0,0.1); }
+        
+        /* Success animation */
+        .success-bounce { animation: bounce 0.5s ease; }
+        @keyframes bounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        /* Loading dots */
+        .loading-dot { animation: loadingDot 1.4s infinite ease-in-out both; }
+        .loading-dot:nth-child(1) { animation-delay: -0.32s; }
+        .loading-dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes loadingDot {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+        
+        /* Nice scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* Line clamp */
+        .line-clamp-3 {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-50 to-blue-50 min-h-screen">
+    <div id="root"></div>
+    
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <script type="text/babel">
+        const { useState, useRef, useEffect, useCallback } = React;
+        
+        // API URL - automatically detect
+        const API_URL = window.location.origin;
+        
+        // Local storage keys
+        const STORAGE_KEYS = {
+            TEMPLATES: 'quadd_templates',
+            LAST_TEMPLATE: 'quadd_last_template',
+        };
+        
+        // Document type labels (friendly names)
+        const DOC_TYPES = {
+            basketball: { label: 'Basketball', icon: '🏀' },
+            hockey: { label: 'Hockey', icon: '🏒' },
+            wrestling: { label: 'Wrestling', icon: '🤼' },
+            gymnastics: { label: 'Gymnastics', icon: '🤸' },
+            baseball: { label: 'Baseball', icon: '⚾' },
+            football: { label: 'Football', icon: '🏈' },
+            volleyball: { label: 'Volleyball', icon: '🏐' },
+            soccer: { label: 'Soccer', icon: '⚽' },
+            honor_roll: { label: 'Honor Roll', icon: '📜' },
+            legal_notice: { label: 'Legal Notice', icon: '⚖️' },
+            other: { label: 'Other', icon: '📄' },
+        };
+        
+        // Default templates to get users started
+        const DEFAULT_TEMPLATES = [
+            {
+                id: 'basketball-standard',
+                name: 'Basketball - Standard',
+                docType: 'basketball',
+                description: 'Classic newspaper box score format',
+                sampleOutput: `Pipestone.............................37 29 — 66
+Windom................................23 48 — 71
+
+Pipestone (FG-FT-TP): Danks 0-0-0; Moeller 3-2-8; Kor 4-3-14.
+FG: 22-58 (38%). FT: 17-22 (77%). 3Pt: 5-22 (23%).`,
+                isDefault: true,
+            },
+            {
+                id: 'hockey-standard',
+                name: 'Hockey - Standard',
+                docType: 'hockey',
+                description: 'Game summary with scoring plays',
+                sampleOutput: `Windom Area..........................1 2 1 1 — 5
+Fairmont.............................2 2 0 0 — 4
+
+FIRST PERIOD: 1. Windom: Lohse (Espenson) 2:45.
+SUMMARY: Shots: Windom 38, Fairmont 32.`,
+                isDefault: true,
+            },
+        ];
+        
+        // ============================================
+        // MAIN APP
+        // ============================================
+        function App() {
+            const [templates, setTemplates] = useState([]);
+            const [selectedTemplate, setSelectedTemplate] = useState(null);
+            const [view, setView] = useState('main');
+            const [inputText, setInputText] = useState('');
+            const [inputFile, setInputFile] = useState(null);
+            const [isProcessing, setIsProcessing] = useState(false);
+            const [result, setResult] = useState(null);
+            const [error, setError] = useState(null);
+            
+            // Load templates on mount
+            useEffect(() => {
+                const saved = localStorage.getItem(STORAGE_KEYS.TEMPLATES);
+                if (saved) {
+                    try {
+                        const parsed = JSON.parse(saved);
+                        setTemplates([...DEFAULT_TEMPLATES, ...parsed]);
+                    } catch (e) {
+                        setTemplates(DEFAULT_TEMPLATES);
+                    }
+                } else {
+                    setTemplates(DEFAULT_TEMPLATES);
+                }
+                
+                const lastTemplate = localStorage.getItem(STORAGE_KEYS.LAST_TEMPLATE);
+                if (lastTemplate) {
+                    setSelectedTemplate(lastTemplate);
+                }
+            }, []);
+            
+            const saveTemplates = (newTemplates) => {
+                const userTemplates = newTemplates.filter(t => !t.isDefault);
+                localStorage.setItem(STORAGE_KEYS.TEMPLATES, JSON.stringify(userTemplates));
+                setTemplates([...DEFAULT_TEMPLATES, ...userTemplates]);
+            };
+            
+            const handleSelectTemplate = (templateId) => {
+                setSelectedTemplate(templateId);
+                localStorage.setItem(STORAGE_KEYS.LAST_TEMPLATE, templateId);
+                setError(null);
+            };
+            
+            const handleFileInput = (file) => {
+                setInputFile(file);
+                setInputText('');
+                setError(null);
+            };
+            
+            const handleTextInput = (text) => {
+                setInputText(text);
+                setInputFile(null);
+                setError(null);
+            };
+            
+            const handleProcess = async () => {
+                if (!inputFile && !inputText.trim()) {
+                    setError('Please upload a file or paste your stats first.');
+                    return;
+                }
+                
+                setIsProcessing(true);
+                setError(null);
+                
+                try {
+                    const formData = new FormData();
+                    
+                    if (inputFile) {
+                        formData.append('file', inputFile);
+                    } else {
+                        const blob = new Blob([inputText], { type: 'text/plain' });
+                        formData.append('file', blob, 'pasted_content.txt');
+                    }
+                    
+                    const template = templates.find(t => t.id === selectedTemplate);
+                    if (template) {
+                        formData.append('document_type', template.docType);
+                    }
+                    
+                    const response = await fetch(`${API_URL}/extract`, {
+                        method: 'POST',
+                        body: formData,
+                    });
+                    
+                    if (!response.ok) {
+                        const err = await response.json();
+                        throw new Error(err.detail || 'Processing failed');
+                    }
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        setResult(data);
+                        setView('result');
+                    } else {
+                        throw new Error(data.errors?.[0] || 'Could not read this document. Please check the format.');
+                    }
+                } catch (err) {
+                    setError(err.message || 'Something went wrong. Please try again.');
+                } finally {
+                    setIsProcessing(false);
+                }
+            };
+            
+            const handleCreateTemplate = (newTemplate) => {
+                const templateWithId = {
+                    ...newTemplate,
+                    id: `custom-${Date.now()}`,
+                    isDefault: false,
+                };
+                const userTemplates = templates.filter(t => !t.isDefault);
+                saveTemplates([...userTemplates, templateWithId]);
+                setSelectedTemplate(templateWithId.id);
+                setView('main');
+            };
+            
+            const handleDeleteTemplate = (templateId) => {
+                const newTemplates = templates.filter(t => t.id !== templateId);
+                saveTemplates(newTemplates.filter(t => !t.isDefault));
+                if (selectedTemplate === templateId) {
+                    setSelectedTemplate(null);
+                }
+            };
+            
+            const handleReset = () => {
+                setInputFile(null);
+                setInputText('');
+                setResult(null);
+                setError(null);
+                setView('main');
+            };
+            
+            return (
+                <div className="min-h-screen">
+                    {/* Header */}
+                    <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
+                        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+                            <div 
+                                className="flex items-center gap-3 cursor-pointer" 
+                                onClick={() => { setView('main'); setResult(null); }}
+                            >
+                                <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-600/20">
+                                    <span className="text-white text-xl">📰</span>
+                                </div>
+                                <div>
+                                    <h1 className="font-bold text-slate-800 text-lg leading-tight">Stats Formatter</h1>
+                                    <p className="text-slate-500 text-xs">Box scores → Newspaper text</p>
+                                </div>
+                            </div>
+                            
+                            {view !== 'main' && (
+                                <button
+                                    onClick={handleReset}
+                                    className="text-slate-600 hover:text-slate-800 text-sm font-medium flex items-center gap-1 px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+                                >
+                                    ← Back
+                                </button>
+                            )}
+                        </div>
+                    </header>
+                    
+                    {/* Main Content */}
+                    <main className="max-w-5xl mx-auto px-4 py-8">
+                        {view === 'main' && (
+                            <MainView
+                                templates={templates}
+                                selectedTemplate={selectedTemplate}
+                                onSelectTemplate={handleSelectTemplate}
+                                onCreateNew={() => setView('create')}
+                                onDeleteTemplate={handleDeleteTemplate}
+                                inputFile={inputFile}
+                                inputText={inputText}
+                                onFileInput={handleFileInput}
+                                onTextInput={handleTextInput}
+                                onProcess={handleProcess}
+                                isProcessing={isProcessing}
+                                error={error}
+                            />
+                        )}
+                        
+                        {view === 'create' && (
+                            <CreateTemplateView
+                                onSave={handleCreateTemplate}
+                                onCancel={() => setView('main')}
+                            />
+                        )}
+                        
+                        {view === 'result' && result && (
+                            <ResultView
+                                result={result}
+                                template={templates.find(t => t.id === selectedTemplate)}
+                                onFormatAnother={handleReset}
+                            />
+                        )}
+                    </main>
+                    
+                    {/* Footer */}
+                    <footer className="max-w-5xl mx-auto px-4 py-8 text-center text-sm text-slate-400">
+                        Supports HUDL, GameChanger, and most common stats formats
+                    </footer>
+                </div>
+            );
+        }
+        
+        // ============================================
+        // MAIN VIEW
+        // ============================================
+        function MainView({
+            templates,
+            selectedTemplate,
+            onSelectTemplate,
+            onCreateNew,
+            onDeleteTemplate,
+            inputFile,
+            inputText,
+            onFileInput,
+            onTextInput,
+            onProcess,
+            isProcessing,
+            error,
+        }) {
+            const hasInput = inputFile || inputText.trim();
+            const selectedTemplateObj = templates.find(t => t.id === selectedTemplate);
+            
+            return (
+                <div className="space-y-8 fade-in">
+                    {/* Step 1: Choose Format */}
+                    <section className="bg-white rounded-2xl border border-slate-200 p-6">
+                        <div className="flex items-center justify-between mb-5">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">1</div>
+                                <div>
+                                    <h2 className="text-lg font-semibold text-slate-800">Choose your format style</h2>
+                                    <p className="text-slate-500 text-sm">This controls how your output looks</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={onCreateNew}
+                                className="px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-xl text-sm font-medium flex items-center gap-1.5 transition-colors"
+                            >
+                                <span className="text-lg leading-none">+</span> Create New
+                            </button>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {templates.map(template => (
+                                <TemplateCard
+                                    key={template.id}
+                                    template={template}
+                                    isSelected={selectedTemplate === template.id}
+                                    onSelect={() => onSelectTemplate(template.id)}
+                                    onDelete={template.isDefault ? null : () => onDeleteTemplate(template.id)}
+                                />
+                            ))}
+                        </div>
+                        
+                        {selectedTemplateObj && (
+                            <div className="mt-4 p-3 bg-blue-50 rounded-xl flex items-center gap-2 text-sm">
+                                <span className="text-blue-500">✓</span>
+                                <span className="text-blue-700">Using: <strong>{selectedTemplateObj.name}</strong></span>
+                            </div>
+                        )}
+                    </section>
+                    
+                    {/* Step 2: Upload Stats */}
+                    <section className="bg-white rounded-2xl border border-slate-200 p-6">
+                        <div className="flex items-center gap-3 mb-5">
+                            <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">2</div>
+                            <div>
+                                <h2 className="text-lg font-semibold text-slate-800">Add your stats</h2>
+                                <p className="text-slate-500 text-sm">Upload a file or paste from website</p>
+                            </div>
+                        </div>
+                        
+                        <FileDropZone
+                            file={inputFile}
+                            onFileSelect={onFileInput}
+                        />
+                        
+                        <div className="flex items-center gap-4 my-5">
+                            <div className="flex-1 h-px bg-slate-200"></div>
+                            <span className="text-slate-400 text-sm font-medium px-2">or paste text</span>
+                            <div className="flex-1 h-px bg-slate-200"></div>
+                        </div>
+                        
+                        <textarea
+                            value={inputText}
+                            onChange={(e) => onTextInput(e.target.value)}
+                            placeholder="Paste your stats from a website here..."
+                            className="w-full p-4 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none text-sm transition-shadow"
+                            rows={5}
+                        />
+                        
+                        {hasInput && (
+                            <div className="mt-3 flex items-center gap-2 text-sm text-green-600">
+                                <span>✓</span>
+                                <span>{inputFile ? `File ready: ${inputFile.name}` : 'Text ready to process'}</span>
+                            </div>
+                        )}
+                    </section>
+                    
+                    {/* Error Message */}
+                    {error && (
+                        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3 fade-in">
+                            <span className="text-red-500 text-xl flex-shrink-0">⚠️</span>
+                            <div>
+                                <p className="text-red-800 font-medium">Oops! Something's not right</p>
+                                <p className="text-red-600 text-sm mt-1">{error}</p>
+                            </div>
+                        </div>
+                    )}
+                    
+                    {/* Process Button */}
+                    <div className="flex flex-col items-center gap-3">
+                        <button
+                            onClick={onProcess}
+                            disabled={isProcessing || !hasInput}
+                            className={`px-10 py-4 rounded-2xl font-semibold text-lg transition-all
+                                ${isProcessing || !hasInput
+                                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                                    : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-600/30 hover:shadow-xl hover:shadow-blue-600/40 hover:-translate-y-0.5 active:translate-y-0'
+                                }`}
+                        >
+                            {isProcessing ? (
+                                <span className="flex items-center gap-3">
+                                    <LoadingDots />
+                                    Processing...
+                                </span>
+                            ) : (
+                                'Format My Stats →'
+                            )}
+                        </button>
+                        
+                        {!hasInput && (
+                            <p className="text-slate-400 text-sm">
+                                Add a file or paste text above to continue
+                            </p>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+        
+        // ============================================
+        // TEMPLATE CARD
+        // ============================================
+        function TemplateCard({ template, isSelected, onSelect, onDelete }) {
+            const docType = DOC_TYPES[template.docType] || DOC_TYPES.other;
+            
+            return (
+                <div
+                    onClick={onSelect}
+                    className={`template-card relative bg-white rounded-xl border-2 p-4 cursor-pointer
+                        ${isSelected 
+                            ? 'border-blue-500 ring-4 ring-blue-50' 
+                            : 'border-slate-200 hover:border-slate-300'
+                        }`}
+                >
+                    {isSelected && (
+                        <div className="absolute -top-2 -right-2 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center shadow-lg">
+                            <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                        </div>
+                    )}
+                    
+                    {onDelete && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                            className="absolute top-2 right-2 w-6 h-6 rounded-full bg-slate-100 hover:bg-red-100 flex items-center justify-center text-slate-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                            style={{ opacity: 1 }}
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    )}
+                    
+                    <div className="flex items-start gap-3">
+                        <div className="text-2xl">{docType.icon}</div>
+                        <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-slate-800 truncate pr-6">{template.name}</h3>
+                            <p className="text-slate-500 text-sm mt-0.5">{template.description || docType.label}</p>
+                        </div>
+                    </div>
+                    
+                    {template.sampleOutput && (
+                        <div className="mt-3 p-2.5 bg-slate-50 rounded-lg border border-slate-100">
+                            <pre className="text-xs text-slate-500 whitespace-pre-wrap line-clamp-3 font-mono leading-relaxed">
+                                {template.sampleOutput.slice(0, 120)}...
+                            </pre>
+                        </div>
+                    )}
+                    
+                    {template.isDefault && (
+                        <div className="mt-3 inline-block px-2 py-0.5 bg-slate-100 rounded text-xs text-slate-500">
+                            Built-in
+                        </div>
+                    )}
+                </div>
+            );
+        }
+        
+        // ============================================
+        // FILE DROP ZONE
+        // ============================================
+        function FileDropZone({ file, onFileSelect }) {
+            const [isDragOver, setIsDragOver] = useState(false);
+            const inputRef = useRef(null);
+            
+            const handleDrag = useCallback((e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            }, []);
+            
+            const handleDragIn = useCallback((e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsDragOver(true);
+            }, []);
+            
+            const handleDragOut = useCallback((e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsDragOver(false);
+            }, []);
+            
+            const handleDrop = useCallback((e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsDragOver(false);
+                
+                const files = e.dataTransfer?.files;
+                if (files?.[0]) {
+                    onFileSelect(files[0]);
+                }
+            }, [onFileSelect]);
+            
+            return (
+                <div
+                    onDragEnter={handleDragIn}
+                    onDragLeave={handleDragOut}
+                    onDragOver={handleDrag}
+                    onDrop={handleDrop}
+                    onClick={() => inputRef.current?.click()}
+                    className={`drop-zone border-2 border-dashed rounded-xl p-8 text-center cursor-pointer
+                        ${isDragOver ? 'active border-blue-400 bg-blue-50' : 'border-slate-300 hover:border-slate-400 hover:bg-slate-50'}
+                        ${file ? 'bg-green-50 border-green-400 hover:bg-green-50' : ''}`}
+                >
+                    <input
+                        ref={inputRef}
+                        type="file"
+                        onChange={(e) => e.target.files?.[0] && onFileSelect(e.target.files[0])}
+                        accept=".pdf,.txt,.csv,.html"
+                        className="hidden"
+                    />
+                    
+                    {file ? (
+                        <div className="fade-in">
+                            <div className="text-4xl mb-3">📄</div>
+                            <p className="font-semibold text-green-700">{file.name}</p>
+                            <p className="text-sm text-green-600 mt-1">
+                                {(file.size / 1024).toFixed(1)} KB • Click to change file
+                            </p>
+                        </div>
+                    ) : (
+                        <div>
+                            <div className="text-4xl mb-3">📁</div>
+                            <p className="font-semibold text-slate-700">Drop your file here</p>
+                            <p className="text-sm text-slate-500 mt-1">
+                                or click to browse • PDF, TXT
+                            </p>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+        
+        // ============================================
+        // CREATE TEMPLATE VIEW
+        // ============================================
+        function CreateTemplateView({ onSave, onCancel }) {
+            const [name, setName] = useState('');
+            const [docType, setDocType] = useState('basketball');
+            const [description, setDescription] = useState('');
+            const [sampleOutput, setSampleOutput] = useState('');
+            
+            const handleSave = () => {
+                if (!name.trim()) return;
+                onSave({
+                    name: name.trim(),
+                    docType,
+                    description: description.trim(),
+                    sampleOutput: sampleOutput.trim(),
+                });
+            };
+            
+            const docTypes = Object.entries(DOC_TYPES).filter(([key]) => !['other'].includes(key));
+            
+            return (
+                <div className="max-w-2xl mx-auto fade-in">
+                    <div className="bg-white rounded-2xl border border-slate-200 p-8">
+                        <h2 className="text-2xl font-bold text-slate-800 mb-2">
+                            Create New Format Style
+                        </h2>
+                        <p className="text-slate-500 mb-8">
+                            Save a format style to reuse for future stats
+                        </p>
+                        
+                        {/* Template Name */}
+                        <div className="mb-6">
+                            <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                Name <span className="text-red-400">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                placeholder="e.g., Windom-Boys Basketball"
+                                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+                                autoFocus
+                            />
+                            <p className="mt-2 text-sm text-slate-500">
+                                💡 Tip: Include your paper name and sport, like "Tribune-Hockey"
+                            </p>
+                        </div>
+                        
+                        {/* Document Type */}
+                        <div className="mb-6">
+                            <label className="block text-sm font-semibold text-slate-700 mb-3">
+                                What type of content?
+                            </label>
+                            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+                                {docTypes.map(([key, value]) => (
+                                    <button
+                                        key={key}
+                                        onClick={() => setDocType(key)}
+                                        className={`p-3 rounded-xl border-2 text-center transition-all
+                                            ${docType === key 
+                                                ? 'border-blue-500 bg-blue-50 shadow-sm' 
+                                                : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                                            }`}
+                                    >
+                                        <div className="text-xl mb-1">{value.icon}</div>
+                                        <div className="text-xs font-medium text-slate-700">{value.label}</div>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        
+                        {/* Description */}
+                        <div className="mb-6">
+                            <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                Description <span className="text-slate-400 font-normal">(optional)</span>
+                            </label>
+                            <input
+                                type="text"
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                                placeholder="e.g., Our standard varsity game format"
+                                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+                            />
+                        </div>
+                        
+                        {/* Sample Output */}
+                        <div className="mb-8">
+                            <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                Example output <span className="text-slate-400 font-normal">(optional)</span>
+                            </label>
+                            <textarea
+                                value={sampleOutput}
+                                onChange={(e) => setSampleOutput(e.target.value)}
+                                placeholder={`Paste an example of how your newspaper formats this, like:
+
+Pipestone.......................37 29 — 66
+Windom..........................23 48 — 71
+Pipestone (FG-FT-TP): Danks 0-0-0...`}
+                                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm transition-shadow"
+                                rows={6}
+                            />
+                            <p className="mt-2 text-sm text-slate-500">
+                                This helps you remember what format this style produces
+                            </p>
+                        </div>
+                        
+                        {/* Buttons */}
+                        <div className="flex gap-3">
+                            <button
+                                onClick={onCancel}
+                                className="flex-1 px-6 py-3 border border-slate-300 rounded-xl text-slate-700 font-medium hover:bg-slate-50 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSave}
+                                disabled={!name.trim()}
+                                className={`flex-1 px-6 py-3 rounded-xl font-medium transition-all
+                                    ${name.trim()
+                                        ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-600/20'
+                                        : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                                    }`}
+                            >
+                                Save Format Style
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+        
+        // ============================================
+        // RESULT VIEW
+        // ============================================
+        function ResultView({ result, template, onFormatAnother }) {
+            const [copied, setCopied] = useState(false);
+            
+            const handleCopy = async () => {
+                if (result?.newspaper_text) {
+                    await navigator.clipboard.writeText(result.newspaper_text);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2500);
+                }
+            };
+            
+            const docType = DOC_TYPES[result?.document_type] || DOC_TYPES.other;
+            
+            return (
+                <div className="max-w-3xl mx-auto fade-in">
+                    {/* Success Header */}
+                    <div className="text-center mb-8 success-bounce">
+                        <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4 shadow-lg shadow-green-100">
+                            <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                        </div>
+                        <h2 className="text-2xl font-bold text-slate-800">Your stats are ready!</h2>
+                        <p className="text-slate-500 mt-2">
+                            {docType.icon} Detected: {docType.label}
+                            {result?.confidence && ` • ${Math.round(result.confidence * 100)}% confidence`}
+                        </p>
+                    </div>
+                    
+                    {/* Output Box */}
+                    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-lg">
+                        <div className="bg-slate-50 px-5 py-3 border-b border-slate-200 flex items-center justify-between">
+                            <span className="text-sm font-semibold text-slate-600">📄 Formatted Output</span>
+                            <button
+                                onClick={handleCopy}
+                                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all
+                                    ${copied 
+                                        ? 'bg-green-500 text-white shadow-lg shadow-green-500/30' 
+                                        : 'bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-600/20'
+                                    }`}
+                            >
+                                {copied ? '✓ Copied!' : '📋 Copy'}
+                            </button>
+                        </div>
+                        
+                        <div className="p-6 bg-white">
+                            <pre className="whitespace-pre-wrap font-mono text-sm text-slate-800 leading-relaxed">
+                                {result?.newspaper_text || 'No output generated'}
+                            </pre>
+                        </div>
+                    </div>
+                    
+                    {/* Warnings */}
+                    {result?.warnings?.length > 0 && (
+                        <div className="mt-4 bg-amber-50 border border-amber-200 rounded-xl p-4">
+                            <p className="font-semibold text-amber-800 text-sm flex items-center gap-2">
+                                <span>💡</span> Notes
+                            </p>
+                            <ul className="mt-2 text-sm text-amber-700 space-y-1">
+                                {result.warnings.map((w, i) => <li key={i}>• {w}</li>)}
+                            </ul>
+                        </div>
+                    )}
+                    
+                    {/* Actions */}
+                    <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
+                        <button
+                            onClick={handleCopy}
+                            className="px-8 py-3.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/30 hover:shadow-xl hover:shadow-blue-600/40"
+                        >
+                            📋 Copy to Clipboard
+                        </button>
+                        <button
+                            onClick={onFormatAnother}
+                            className="px-8 py-3.5 bg-white border-2 border-slate-200 text-slate-700 rounded-xl font-semibold hover:bg-slate-50 hover:border-slate-300 transition-colors"
+                        >
+                            Format Another
+                        </button>
+                    </div>
+                    
+                    {/* Pro tip */}
+                    <div className="mt-8 text-center">
+                        <p className="text-sm text-slate-400">
+                            💡 Pro tip: Press <kbd className="px-1.5 py-0.5 bg-slate-100 rounded text-xs font-mono">Ctrl+V</kbd> to paste directly into your publishing software
+                        </p>
+                    </div>
+                </div>
+            );
+        }
+        
+        // ============================================
+        // LOADING DOTS
+        // ============================================
+        function LoadingDots() {
+            return (
+                <span className="inline-flex gap-1">
+                    <span className="loading-dot w-2 h-2 bg-current rounded-full"></span>
+                    <span className="loading-dot w-2 h-2 bg-current rounded-full"></span>
+                    <span className="loading-dot w-2 h-2 bg-current rounded-full"></span>
+                </span>
+            );
+        }
+        
+        // ============================================
+        // RENDER
+        // ============================================
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>
