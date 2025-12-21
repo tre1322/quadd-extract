@@ -446,39 +446,49 @@ class TemplateRenderer:
         self,
         extraction: ExtractionResult,
         template_id: Optional[str] = None,
+        learned_template: Optional[str] = None,
     ) -> RenderResult:
         """
         Render extracted data using a template.
-        
+
         Args:
             extraction: Extraction result to render
             template_id: Template to use (auto-selects if not provided)
-            
+            learned_template: Learned Jinja2 template (preferred over template_id)
+
         Returns:
             RenderResult with formatted text
         """
         warnings = []
-        
-        # Auto-select template if not provided
-        if template_id is None:
-            template_id = self.find_template_for_type(extraction.document_type)
-            if template_id:
-                warnings.append(f"Auto-selected template: {template_id}")
-        
-        # Get template
-        template_def = self.get_template(template_id)
-        if template_def is None:
-            return RenderResult(
-                success=False,
-                newspaper_text="",
-                template_id=template_id or "unknown",
-                extraction=extraction,
-                warnings=[f"Template not found: {template_id}"],
-            )
-        
+
+        # Prefer learned template over template_id
+        if learned_template:
+            template_str = learned_template
+            template_id = "learned"
+            warnings.append("Using learned template from processor")
+        else:
+            # Auto-select template if not provided
+            if template_id is None:
+                template_id = self.find_template_for_type(extraction.document_type)
+                if template_id:
+                    warnings.append(f"Auto-selected template: {template_id}")
+
+            # Get template
+            template_def = self.get_template(template_id)
+            if template_def is None:
+                return RenderResult(
+                    success=False,
+                    newspaper_text="",
+                    template_id=template_id or "unknown",
+                    extraction=extraction,
+                    warnings=[f"Template not found: {template_id}"],
+                )
+
+            template_str = template_def["template"]
+
         # Render
         try:
-            template = self.env.from_string(template_def["template"])
+            template = self.env.from_string(template_str)
             rendered = template.render(data=extraction.data)
             
             # Clean up whitespace

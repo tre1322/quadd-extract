@@ -1,8 +1,57 @@
 """
-Sports schema models.
+DEPRECATED - Sports schema models (NOT USED).
 
-These models are designed to be universal across different sports while
-capturing sport-specific details when available.
+⚠️ WARNING: These Pydantic schemas are NOT used anywhere in the codebase.
+⚠️ They exist for backward compatibility only.
+
+## Why Deprecated
+
+These hardcoded schemas violate the project charter (transformer.md):
+- ❌ Sport-specific code (basketball, hockey, wrestling fields)
+- ❌ Won't work for new document types (honor roll, legal notices, invoices)
+- ❌ Prevents the system from learning new structures
+
+## Current Approach (Charter-Compliant)
+
+The system uses **dynamic dict-based data structures** learned from examples:
+
+1. **Schema is implicit in extraction_ops**:
+   - field_path defines structure: "items[].student_name"
+   - transform defines type: "to_int", "to_float", "strip"
+
+2. **ExtractionResult.data is dict[str, Any]** (see src/schemas/common.py):
+   - Generic - works for ANY document type
+   - Flexible - adapts to learned structure
+   - No hardcoded fields
+
+3. **Examples**:
+
+   Honor roll extraction:
+   {
+       "items": [
+           {"student_name": "John", "grade_level": 9, "gpa": 3.8}
+       ]
+   }
+
+   Basketball extraction:
+   {
+       "team1": {"name": "Windom", "final_score": 72, "players": [...]}
+   }
+
+   Legal notice extraction:
+   {
+       "cases": [
+           {"case_number": "2024-CV-1234", "plaintiff": "Smith", ...}
+       ]
+   }
+
+All use the SAME generic dict structure - no sport-specific models needed!
+
+## Original Documentation (Historical)
+
+These models were designed to be universal across different sports while
+capturing sport-specific details when available. However, they became too
+rigid and prevented the system from learning new document types.
 """
 from __future__ import annotations
 

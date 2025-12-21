@@ -59,7 +59,7 @@ class ProcessorExecutor:
         data = {}
         for op in processor.extraction_ops:
             try:
-                value = self._extract_field(ir, regions, anchor_positions, op)
+                value = self._extract_field(ir, regions, anchor_positions, op, processor)
                 self._set_nested_field(data, op.field_path, value)
             except Exception as e:
                 logger.warning(f"Failed to extract field '{op.field_path}': {e}")
@@ -178,16 +178,19 @@ class ProcessorExecutor:
 
             for word in words[1:]:
                 # Find closest block with this word on same page
+                # IMPORTANT: Calculate distance from PREVIOUS block, not first block
+                # This allows long patterns to work (sequential matching)
+                prev_block = group[-1]
                 closest = None
                 min_dist = proximity
 
                 for candidate in word_blocks[word]:
-                    if candidate.bbox.page != first_block.bbox.page:
+                    if candidate.bbox.page != prev_block.bbox.page:
                         continue
 
-                    # Calculate distance (Euclidean in normalized space)
-                    dx = candidate.bbox.x0 - first_block.bbox.x1
-                    dy = abs(candidate.bbox.y0 - first_block.bbox.y0)
+                    # Calculate distance from PREVIOUS block (not first)
+                    dx = candidate.bbox.x0 - prev_block.bbox.x1
+                    dy = abs(candidate.bbox.y0 - prev_block.bbox.y0)
                     dist = (dx**2 + dy**2) ** 0.5
 
                     if dist < min_dist:
@@ -282,12 +285,22 @@ class ProcessorExecutor:
 
         for region_spec in region_specs:
             start_anchor = anchor_positions.get(region_spec.start_anchor)
-            end_anchor = anchor_positions.get(region_spec.end_anchor)
 
-            if not start_anchor or not end_anchor:
+            # Handle special "end_of_document" anchor
+            if region_spec.end_anchor == "end_of_document":
+                end_anchor = "END_OF_DOC"  # Special marker
+            else:
+                end_anchor = anchor_positions.get(region_spec.end_anchor)
+
+            if not start_anchor:
                 logger.warning(
-                    f"Region '{region_spec.name}' missing anchors: "
-                    f"start={start_anchor is not None}, end={end_anchor is not None}"
+                    f"Region '{region_spec.name}' missing start anchor: {region_spec.start_anchor}"
+                )
+                continue
+
+            if end_anchor is None and region_spec.end_anchor != "end_of_document":
+                logger.warning(
+                    f"Region '{region_spec.name}' missing end anchor: {region_spec.end_anchor}"
                 )
                 continue
 
@@ -303,9 +316,19 @@ class ProcessorExecutor:
         self,
         ir: DocumentIR,
         start: TextBlock,
-        end: TextBlock
+        end
     ) -> List[TextBlock]:
         """Get all blocks between two anchor blocks."""
+        # Handle special "end of document" marker
+        if end == "END_OF_DOC":
+            page_blocks = ir.get_blocks_by_page(start.bbox.page)
+            start_y = start.bbox.y1  # After start block
+            between = []
+            for block in page_blocks:
+                if block.bbox.y0 >= start_y:
+                    between.append(block)
+            return between
+
         # Same page only
         if start.bbox.page != end.bbox.page:
             return []
@@ -328,7 +351,8 @@ class ProcessorExecutor:
         ir: DocumentIR,
         regions: Dict[str, List[TextBlock]],
         anchors: Dict[str, TextBlock],
-        op: ExtractionOp
+        op: ExtractionOp,
+        processor: Processor
     ) -> Any:
         """
         Extract a single field value.
@@ -338,6 +362,7 @@ class ProcessorExecutor:
             regions: Defined regions
             anchors: Found anchors
             op: Extraction operation
+            processor: Processor with learned field mapping
 
         Returns:
             Extracted value
@@ -346,16 +371,25 @@ class ProcessorExecutor:
         # Examples: "region.away_players.column[0]", "anchor.team_name.text"
 
         if op.source.startswith("region."):
-            return self._extract_from_region(regions, op)
+            return self._extract_from_region(regions, anchors, op, processor)
         elif op.source.startswith("anchor."):
-            return self._extract_from_anchor(anchors, op)
+            return self._extract_from_anchor(anchors, ir, op)
         elif op.source.startswith("table."):
             return self._extract_from_table(ir, op)
+        elif op.source == "literal":
+            # Handle literal sources by inferring from field path
+            return self._extract_literal(anchors, op)
         else:
             logger.warning(f"Unknown source type in: {op.source}")
             return None
 
-    def _extract_from_region(self, regions: Dict[str, List[TextBlock]], op: ExtractionOp) -> Any:
+    def _extract_from_region(
+        self,
+        regions: Dict[str, List[TextBlock]],
+        anchors: Dict[str, TextBlock],
+        op: ExtractionOp,
+        processor: Processor
+    ) -> Any:
         """Extract value from a region."""
         # Parse: "region.away_players.column[0]"
         parts = op.source.split('.')
@@ -378,23 +412,36 @@ class ProcessorExecutor:
             col_match = re.search(r'column\[(\d+)\]', parts[2])
             if col_match:
                 col_idx = int(col_match.group(1))
-                # Group blocks by row, extract specified column
-                rows = self._group_blocks_by_row(region_blocks)
-                values = []
-                for row in rows:
-                    if col_idx < len(row):
-                        values.append(row[col_idx].text)
+
+                # Try to infer correct column from field name
+                # Extract field name from path (e.g., "team1.players[].oreb" -> "oreb")
+                field_name = op.field_path.split('.')[-1].replace('[]', '').lower()
+
+                # Use learned field-to-column mapping from processor
+                # Fall back to empty dict if not available (backward compatibility)
+                field_to_column_map = processor.field_column_mapping or {}
+
+                # Use position-based column extraction with field-aware correction
+                values = self._extract_column_by_position(
+                    region_blocks, col_idx, anchors, field_name, field_to_column_map
+                )
+
                 # Return list or single value
                 if '[]' in op.field_path:
-                    return [self._apply_transform(v, op.transform) for v in values]
+                    return [self._apply_transform(v, op.transform) if v else None for v in values]
                 else:
                     return self._apply_transform(values[0] if values else None, op.transform)
 
         return None
 
-    def _extract_from_anchor(self, anchors: Dict[str, TextBlock], op: ExtractionOp) -> Any:
+    def _extract_from_anchor(
+        self,
+        anchors: Dict[str, TextBlock],
+        ir: DocumentIR,
+        op: ExtractionOp
+    ) -> Any:
         """Extract value from an anchor."""
-        # Parse: "anchor.team_name.text"
+        # Parse: "anchor.team_name.text" or "anchor.team_scores.next_number[1]"
         parts = op.source.split('.')
         if len(parts) < 2:
             return None
@@ -405,7 +452,29 @@ class ProcessorExecutor:
         if not anchor_block:
             return None
 
-        # Get text
+        # Check for special extraction patterns
+        if len(parts) >= 3:
+            pattern = parts[2]
+
+            # Handle next_number and next_number[N]
+            if pattern.startswith("next_number"):
+                # Find numbers after this anchor on same row
+                numbers = self._find_numbers_after_anchor(ir, anchor_block)
+
+                # Check for index like next_number[1]
+                if '[' in pattern:
+                    idx_match = re.search(r'\[(\d+)\]', pattern)
+                    if idx_match and numbers:
+                        idx = int(idx_match.group(1))
+                        if idx < len(numbers):
+                            return self._apply_transform(numbers[idx], op.transform)
+                elif numbers:
+                    # Return first number
+                    return self._apply_transform(numbers[0], op.transform)
+
+                return None
+
+        # Default: Get text from anchor
         text = anchor_block.text
         return self._apply_transform(text, op.transform)
 
@@ -415,6 +484,75 @@ class ProcessorExecutor:
         # For Phase 1, this is a placeholder - tables are complex
         logger.warning("Table extraction not yet fully implemented")
         return None
+
+    def _extract_literal(self, anchors: Dict[str, TextBlock], op: ExtractionOp) -> Any:
+        """
+        Extract from literal source by inferring anchor from field path.
+
+        When LLM generates source="literal", we map field names to anchors.
+        """
+        # Extract field name from path (e.g., "team1.name" -> "team1")
+        field_path = op.field_path.lower()
+
+        # Map field paths to anchor names
+        if "team1" in field_path and "name" in field_path:
+            anchor_name = "team1_scores"
+        elif "team2" in field_path and "name" in field_path:
+            anchor_name = "team2_scores"
+        else:
+            logger.warning(f"Cannot infer anchor for literal field: {op.field_path}")
+            return None
+
+        # Get anchor text
+        anchor_block = anchors.get(anchor_name)
+        if anchor_block:
+            return self._apply_transform(anchor_block.text, op.transform)
+
+        return None
+
+    def _find_numbers_after_anchor(
+        self,
+        ir: DocumentIR,
+        anchor_block: TextBlock,
+        max_distance: float = 0.5
+    ) -> List[str]:
+        """
+        Find number blocks on the same row after an anchor.
+
+        Args:
+            ir: Document IR
+            anchor_block: The anchor block
+            max_distance: Maximum X-distance to search
+
+        Returns:
+            List of number strings found after the anchor
+        """
+        # Get blocks on the same page
+        page_blocks = ir.get_blocks_by_page(anchor_block.bbox.page)
+
+        # Find blocks on same row (within Y-tolerance)
+        y_tolerance = 0.015
+        same_row_blocks = []
+
+        for block in page_blocks:
+            # Same row and to the right of anchor
+            if (abs(block.bbox.center_y - anchor_block.bbox.center_y) <= y_tolerance and
+                block.bbox.x0 > anchor_block.bbox.x1 and
+                block.bbox.x0 - anchor_block.bbox.x1 < max_distance):
+                same_row_blocks.append(block)
+
+        # Sort by x-position
+        same_row_blocks.sort(key=lambda b: b.bbox.x0)
+
+        # Extract number values
+        numbers = []
+        for block in same_row_blocks:
+            # Check if text looks like a number
+            text = block.text.strip()
+            if text.replace('.', '').replace('-', '').replace('+', '').isdigit():
+                numbers.append(text)
+
+        return numbers
 
     def _group_blocks_by_row(self, blocks: List[TextBlock], tolerance: float = 0.015) -> List[List[TextBlock]]:
         """Group blocks into rows by y-coordinate."""
@@ -439,6 +577,158 @@ class ProcessorExecutor:
             rows.append(sorted(current_row, key=lambda b: b.bbox.x0))
 
         return rows
+
+    def _extract_column_by_position(
+        self,
+        region_blocks: List[TextBlock],
+        col_idx: int,
+        anchors: Dict[str, TextBlock],
+        field_name: str = None,
+        field_to_column_map: dict = None,
+        x_tolerance: float = 0.03
+    ) -> List[str]:
+        """
+        Extract a column from a table region using x-position range mapping.
+
+        Maps blocks to columns based on X-position ranges defined by headers,
+        handling multi-block columns and missing data correctly.
+
+        Args:
+            region_blocks: All blocks in the region
+            col_idx: Column index to extract (may be incorrect if LLM counted wrong)
+            anchors: Found anchor blocks (including column headers)
+            field_name: The field being extracted (e.g., "oreb", "fouls")
+            field_to_column_map: Map of field names to column header names
+            x_tolerance: Tolerance for x-position matching
+
+        Returns:
+            List of values for this column (one per row, empty string if missing)
+        """
+        # Group blocks into rows
+        rows = self._group_blocks_by_row(region_blocks)
+
+        if not rows:
+            return []
+
+        # Determine which page this region is on
+        # All blocks in a region should be on the same page
+        region_page = region_blocks[0].bbox.page if region_blocks else None
+
+        # Build column definitions from anchors
+        # Column headers are outside the region, so we use anchors to find them
+
+        columns = []
+
+        # Collect all potential column header anchors
+        # Map anchor names to their blocks
+        # IMPORTANT: Only include anchors from the same page as the region
+        potential_columns = {}
+
+        # Dynamically find ALL column anchors (anchors ending with '_column')
+        # This ensures we include MINS, +/-, and any other columns the synthesizer created
+        for anchor_name, anchor_block in anchors.items():
+            if anchor_name.endswith('_column'):
+                # Only include anchors from the same page as the region
+                if region_page is None or anchor_block.bbox.page == region_page:
+                    potential_columns[anchor_name] = anchor_block
+
+        # Special case: Find region start anchor as Name column
+        # Look for team1_player_table_start or team2_player_table_start
+        region_start_patterns = ['team1_player_table_start', 'team2_player_table_start',
+                                  'player_table_start', 'name_column']
+        for pattern in region_start_patterns:
+            if pattern in anchors:
+                anchor_block = anchors[pattern]
+                # Only use if on the same page as the region
+                if region_page is None or anchor_block.bbox.page == region_page:
+                    columns.append({
+                        'name': 'Name',
+                        'x_center': anchor_block.bbox.x0
+                    })
+                    break
+
+        # Add all other column anchors
+        for anchor_name, anchor_block in sorted(potential_columns.items(),
+                                                  key=lambda x: x[1].bbox.x0):
+            columns.append({
+                'name': anchor_block.text,
+                'x_center': anchor_block.bbox.x0
+            })
+
+        # If still no columns found, use first row as fallback
+        if not columns:
+            header_row = rows[0]
+            for header_block in header_row:
+                columns.append({
+                    'name': header_block.text,
+                    'x_center': header_block.bbox.x0
+                })
+
+        # Sort columns by x-position
+        columns.sort(key=lambda c: c['x_center'])
+
+        # Calculate X-ranges for each column
+        for i in range(len(columns)):
+            if i == 0:
+                # First column starts at left edge
+                columns[i]['x_start'] = 0.0
+            else:
+                # Start at midpoint with previous column
+                midpoint = (columns[i - 1]['x_center'] + columns[i]['x_center']) / 2
+                columns[i]['x_start'] = midpoint
+
+            if i == len(columns) - 1:
+                # Last column ends at right edge
+                columns[i]['x_end'] = 1.0
+            else:
+                # End at midpoint with next column
+                midpoint = (columns[i]['x_center'] + columns[i + 1]['x_center']) / 2
+                columns[i]['x_end'] = midpoint
+
+        # Find target column using field name if available
+        target_column = None
+
+        if field_name and field_to_column_map:
+            # Try to find column by field name
+            target_column_name = field_to_column_map.get(field_name)
+            if target_column_name:
+                for col in columns:
+                    if col['name'] == target_column_name:
+                        target_column = col
+                        break
+
+        # Fall back to index-based lookup if field name didn't work
+        if not target_column:
+            if col_idx >= len(columns):
+                # Index out of range
+                return [""] * len(rows)
+            target_column = columns[col_idx]
+
+        # Extract values from ALL data rows (don't skip first row)
+        values = []
+        for row in rows:
+            # Find all blocks that belong to this column
+            column_blocks = []
+            for block in row:
+                block_x = block.bbox.x0
+                if target_column['x_start'] <= block_x < target_column['x_end']:
+                    column_blocks.append(block)
+
+            # Sort blocks by x-position and concatenate
+            column_blocks.sort(key=lambda b: b.bbox.x0)
+
+            if column_blocks:
+                # Concatenate multiple blocks with space
+                value = ' '.join(b.text for b in column_blocks)
+                # DEBUG: Show name extraction
+                if field_name == 'name' and value:
+                    print(f"DEBUG Name extraction: row {len(values)}: '{value}'")
+                values.append(value)
+            else:
+                # No data in this column for this row
+                values.append("")
+
+        return values
 
     def _apply_transform(self, value: Any, transform: Optional[str]) -> Any:
         """Apply transformation to extracted value."""
@@ -515,9 +805,15 @@ class ProcessorExecutor:
                 current[final_key] = value if isinstance(value, list) else [value]
         else:
             if isinstance(current, list):
-                # Setting same value on all items
-                for item in current:
-                    item[final_key] = value
+                # Distribute values across array items if value is also a list
+                if isinstance(value, list) and len(value) == len(current):
+                    # Distribute: players[0].name = value[0], players[1].name = value[1], etc.
+                    for idx, item in enumerate(current):
+                        item[final_key] = value[idx]
+                else:
+                    # Set same value on all items
+                    for item in current:
+                        item[final_key] = value
             else:
                 current[final_key] = value
 

@@ -11,7 +11,7 @@ from src.db.database import get_database
 async def main():
     # Load the latest processor
     db = await get_database()
-    processor_id = "3aa8bda6-5985-4f09-9b27-a60b4d49d018"
+    processor_id = "040deef4-e8c1-4d92-9e8b-3c183756ab88"  # windom_basketball_complete
 
     print("="*80)
     print("TESTING: Extraction with Calculations")

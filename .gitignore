@@ -1,65 +1,71 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Virtual environments
-venv/
-ENV/
-env/
-.venv/
-
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-*~
-
 # Environment
 .env
-.env.local
-*.env
-
-# Data
-data/uploads/
-data/samples/*.pdf
-*.extracted.json
-
-# Logs
-*.log
-logs/
-
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Docker
-.docker/
+venv/
+.claude/
 
 # Database
 *.db
-*.sqlite
-*.sqlite3
+data/*.db
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Debug files
+debug_*.py
+check_*.py
+*_output.txt
+output.txt
+desired_output.txt
+extraction_result.json
+processor_details.json
+synthesis_test_output.txt
+
+# Development docs
+PHASE_*.md
+BUG_FIX_*.md
+*_COMPLETE.md
+*_BACKLOG.md
+ARCHITECTURE_SPEC.md
+HANDOFF.md
+PROJECT_STATUS.md
+VALIDATION_REPORT.md
+SCHEMA_*.md
+LEARNING_SYSTEM_AUDIT.md
+CLI_TOOLS_READY.md
+DROPDOWN_BUG_FIX.md
+MANAGE_PROCESSORS_TAB.md
+PIPESTONE_BUG_REPORT.md
+UI_SCREENSHOT.txt
+GENERIC_*.md
+TEXT_PASTE_FEATURE.md
+VISION_TRANSFORMER_COMPLETE.md
+SIMPLE_TRANSFORMER_USAGE.md
+BULK_DELETE_FEATURE.md
+UI_README.md
+QUICK_START_UI.md
+OCR_VISION_COMPLETE.md
+TEMPLATE_LEARNING_COMPLETE.md
+FIELD_MAPPING_COMPLETE.md
+SYNTHESIS_PROMPT_RED_FLAGS.md
+
+# Standalone scripts
+extract_with_processor.py
+learn_and_extract.py
+list_processors.py
+fix_prompt_braces.py
+exhaustive_name_search.py
+demo_learning.bat
+demo_learning.sh
+try_ocr_extraction.py
+
+# Test files in root
+test_*.py
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

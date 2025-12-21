@@ -1,0 +1,635 @@
+Region 'team2_players' missing anchors: start=True, end=False
+Cannot convert [0] to number in sum
+Cannot convert [0] to number in sum
+Cannot convert [0] to number in sum
+Cannot convert [0] to number in sum
+Cannot convert [0] to number in sum
+Cannot convert [0] to number in sum
+Cannot convert [0] to number in sum
+Cannot convert [0] to number in sum
+Cannot convert [0] to number in sum
+Cannot convert [0] to number in sum
+Cannot convert [0] to number in sum
+Cannot convert [0] to number in sum
+Cannot convert [0] to number in sum
+Cannot convert [0] to number in sum
+Cannot convert [0, 0, 0, 15, 3, 20, 3, 3, 0, 18, 0, 3, 0] to number in sum
+Cannot convert [0, 0, 0, 15, 3, 20, 3, 3, 0, 18, 0, 3, 0] to number in sum
+Cannot convert [0, 0, 0, 15, 3, 20, 3, 3, 0, 18, 0, 3, 0] to number in sum
+Cannot convert [0, 0, 0, 15, 3, 20, 3, 3, 0, 18, 0, 3, 0] to number in sum
+Cannot convert [0, 0, 0, 15, 3, 20, 3, 3, 0, 18, 0, 3, 0] to number in sum
+Cannot convert [0, 0, 0, 15, 3, 20, 3, 3, 0, 18, 0, 3, 0] to number in sum
+Cannot convert [0, 0, 0, 15, 3, 20, 3, 3, 0, 18, 0, 3, 0] to number in sum
+Cannot convert [0, 0, 0, 15, 3, 20, 3, 3, 0, 18, 0, 3, 0] to number in sum
+Cannot convert [0, 0, 0, 15, 3, 20, 3, 3, 0, 18, 0, 3, 0] to number in sum
+Cannot convert [0, 0, 0, 15, 3, 20, 3, 3, 0, 18, 0, 3, 0] to number in sum
+Cannot convert [0, 0, 0, 15, 3, 20, 3, 3, 0, 18, 0, 3, 0] to number in sum
+Cannot convert [0, 0, 0, 15, 3, 20, 3, 3, 0, 18, 0, 3, 0] to number in sum
+Cannot convert [0, 0, 0, 15, 3, 20, 3, 3, 0, 18, 0, 3, 0] to number in sum
+Cannot convert [0, 0, 0, 15, 3, 20, 3, 3, 0, 18, 0, 3, 0] to number in sum
+Cannot convert [22, 24, 6, 36, 16, 2, 20, 0] to number in sum
+Cannot convert [22, 24, 6, 36, 16, 2, 20, 0] to number in sum
+Cannot convert [22, 24, 6, 36, 16, 2, 20, 0] to number in sum
+Cannot convert [22, 24, 6, 36, 16, 2, 20, 0] to number in sum
+Cannot convert [22, 24, 6, 36, 16, 2, 20, 0] to number in sum
+Cannot convert [22, 24, 6, 36, 16, 2, 20, 0] to number in sum
+Cannot convert [22, 24, 6, 36, 16, 2, 20, 0] to number in sum
+Cannot convert [22, 24, 6, 36, 16, 2, 20, 0] to number in sum
+Cannot convert [22, 24, 6, 36, 16, 2, 20, 0] to number in sum
+Cannot convert [22, 24, 6, 36, 16, 2, 20, 0] to number in sum
+Cannot convert [22, 24, 6, 36, 16, 2, 20, 0] to number in sum
+Cannot convert [22, 24, 6, 36, 16, 2, 20, 0] to number in sum
+Cannot convert [22, 24, 6, 36, 16, 2, 20, 0] to number in sum
+Cannot convert [22, 24, 6, 36, 16, 2, 20, 0] to number in sum
+Cannot convert [0] to number in sum
+Cannot convert [0] to number in sum
+Cannot convert [0] to number in sum
+Cannot convert [0] to number in sum
+Cannot convert [0] to number in sum
+Cannot convert [0] to number in sum
+Cannot convert [0] to number in sum
+Cannot convert [0] to number in sum
+Cannot convert [0] to number in sum
+Cannot convert [0] to number in sum
+Cannot convert [0] to number in sum
+Cannot convert [0] to number in sum
+Cannot convert [0] to number in sum
+Cannot convert [0] to number in sum
+Validation error: Both teams present
+Validation error: Team names not empty
+Validation error: Final scores present
+Validation failed: Validation failed: Both teams present, Validation failed: Team names not empty, Validation failed: Final scores present
+Building DocumentIR...
+  386 blocks, 2 pages
+
+Synthesizing processor with improved rules...
+Generated processor: windom_basketball_v2
+  Anchors: 12
+    - team1_name: ['WHS']
+    - team2_name: ['WOR']
+    - team1_player_table_start: ['Name']
+    - team2_player_table_start: ['Name']
+    - pts_column: ['Pts']
+    - fg_column: ['FG']
+    - threefg_column: ['3FG']
+    - ft_column: ['FT']
+    - oreb_column: ['OREB']
+    - dreb_column: ['DREB']
+    - to_column: ['TO']
+    - foul_column: ['FOUL']
+
+  Regions: 3
+    - team1_players: team1_player_table_start -> team2_player_table_start
+    - team2_players: team2_player_table_start -> end_of_document
+    - period_scores: team1_name -> team2_name
+
+  Extraction Ops: 26
+    - team1.name <- anchor.team1_name.text
+    - team2.name <- anchor.team2_name.text
+    - team1.period1 <- region.period_scores.value[1]
+    - team1.period2 <- region.period_scores.value[2]
+    - team1.final_score <- region.period_scores.value[3]
+    - team2.period1 <- region.period_scores.value[4]
+    - team2.period2 <- region.period_scores.value[5]
+    - team2.final_score <- region.period_scores.value[6]
+    - team1.players[].name <- region.team1_players.column[0]
+    - team1.players[].points <- region.team1_players.column[1]
+    ... and 16 more
+
+  Calculations: 6
+    - team1.total_fouls = sum(team1.players[].fouls)
+    - team1.total_rebounds = sum(team1.players[].oreb) + sum(team1.players[].dreb)
+    - team1.total_turnovers = sum(team1.players[].turnovers)
+    - team2.total_fouls = sum(team2.players[].fouls)
+    - team2.total_rebounds = sum(team2.players[].oreb) + sum(team2.players[].dreb)
+    - team2.total_turnovers = sum(team2.players[].turnovers)
+
+Full Processor JSON:
+{
+  "id": "8162deb0-8df1-4bae-aa22-036d50bd0168",
+  "name": "windom_basketball_v2",
+  "document_type": "basketball",
+  "layout_hash": "9cc4fb340d6e71ab98aaf18464fe89f2",
+  "text_patterns": [],
+  "anchors": [
+    {
+      "name": "team1_name",
+      "patterns": [
+        "WHS"
+      ],
+      "pattern_type": "exact",
+      "location_hint": "first_occurrence",
+      "required": true
+    },
+    {
+      "name": "team2_name",
+      "patterns": [
+        "WOR"
+      ],
+      "pattern_type": "exact",
+      "location_hint": "first_occurrence",
+      "required": true
+    },
+    {
+      "name": "team1_player_table_start",
+      "patterns": [
+        "Name"
+      ],
+      "pattern_type": "exact",
+      "location_hint": "first_occurrence",
+      "required": true
+    },
+    {
+      "name": "team2_player_table_start",
+      "patterns": [
+        "Name"
+      ],
+      "pattern_type": "exact",
+      "location_hint": "second_occurrence",
+      "required": true
+    },
+    {
+      "name": "pts_column",
+      "patterns": [
+        "Pts"
+      ],
+      "pattern_type": "exact",
+      "location_hint": null,
+      "required": true
+    },
+    {
+      "name": "fg_column",
+      "patterns": [
+        "FG"
+      ],
+      "pattern_type": "exact",
+      "location_hint": null,
+      "required": true
+    },
+    {
+      "name": "threefg_column",
+      "patterns": [
+        "3FG"
+      ],
+      "pattern_type": "exact",
+      "location_hint": null,
+      "required": true
+    },
+    {
+      "name": "ft_column",
+      "patterns": [
+        "FT"
+      ],
+      "pattern_type": "exact",
+      "location_hint": null,
+      "required": true
+    },
+    {
+      "name": "oreb_column",
+      "patterns": [
+        "OREB"
+      ],
+      "pattern_type": "exact",
+      "location_hint": null,
+      "required": true
+    },
+    {
+      "name": "dreb_column",
+      "patterns": [
+        "DREB"
+      ],
+      "pattern_type": "exact",
+      "location_hint": null,
+      "required": true
+    },
+    {
+      "name": "to_column",
+      "patterns": [
+        "TO"
+      ],
+      "pattern_type": "exact",
+      "location_hint": null,
+      "required": true
+    },
+    {
+      "name": "foul_column",
+      "patterns": [
+        "FOUL"
+      ],
+      "pattern_type": "exact",
+      "location_hint": null,
+      "required": true
+    }
+  ],
+  "regions": [
+    {
+      "name": "team1_players",
+      "start_anchor": "team1_player_table_start",
+      "end_anchor": "team2_player_table_start",
+      "region_type": "table"
+    },
+    {
+      "name": "team2_players",
+      "start_anchor": "team2_player_table_start",
+      "end_anchor": "end_of_document",
+      "region_type": "table"
+    },
+    {
+      "name": "period_scores",
+      "start_anchor": "team1_name",
+      "end_anchor": "team2_name",
+      "region_type": "key_value"
+    }
+  ],
+  "extraction_ops": [
+    {
+      "field_path": "team1.name",
+      "source": "anchor.team1_name.text",
+      "transform": "strip"
+    },
+    {
+      "field_path": "team2.name",
+      "source": "anchor.team2_name.text",
+      "transform": "strip"
+    },
+    {
+      "field_path": "team1.period1",
+      "source": "region.period_scores.value[1]",
+      "transform": "to_int"
+    },
+    {
+      "field_path": "team1.period2",
+      "source": "region.period_scores.value[2]",
+      "transform": "to_int"
+    },
+    {
+      "field_path": "team1.final_score",
+      "source": "region.period_scores.value[3]",
+      "transform": "to_int"
+    },
+    {
+      "field_path": "team2.period1",
+      "source": "region.period_scores.value[4]",
+      "transform": "to_int"
+    },
+    {
+      "field_path": "team2.period2",
+      "source": "region.period_scores.value[5]",
+      "transform": "to_int"
+    },
+    {
+      "field_path": "team2.final_score",
+      "source": "region.period_scores.value[6]",
+      "transform": "to_int"
+    },
+    {
+      "field_path": "team1.players[].name",
+      "source": "region.team1_players.column[0]",
+      "transform": "strip"
+    },
+    {
+      "field_path": "team1.players[].points",
+      "source": "region.team1_players.column[1]",
+      "transform": "to_int"
+    },
+    {
+      "field_path": "team1.players[].fg",
+      "source": "region.team1_players.column[2]",
+      "transform": "strip"
+    },
+    {
+      "field_path": "team1.players[].threefg",
+      "source": "region.team1_players.column[3]",
+      "transform": "strip"
+    },
+    {
+      "field_path": "team1.players[].ft",
+      "source": "region.team1_players.column[4]",
+      "transform": "strip"
+    },
+    {
+      "field_path": "team1.players[].oreb",
+      "source": "region.team1_players.column[6]",
+      "transform": "to_int"
+    },
+    {
+      "field_path": "team1.players[].dreb",
+      "source": "region.team1_players.column[7]",
+      "transform": "to_int"
+    },
+    {
+      "field_path": "team1.players[].turnovers",
+      "source": "region.team1_players.column[10]",
+      "transform": "to_int"
+    },
+    {
+      "field_path": "team1.players[].fouls",
+      "source": "region.team1_players.column[11]",
+      "transform": "to_int"
+    },
+    {
+      "field_path": "team2.players[].name",
+      "source": "region.team2_players.column[0]",
+      "transform": "strip"
+    },
+    {
+      "field_path": "team2.players[].points",
+      "source": "region.team2_players.column[1]",
+      "transform": "to_int"
+    },
+    {
+      "field_path": "team2.players[].fg",
+      "source": "region.team2_players.column[2]",
+      "transform": "strip"
+    },
+    {
+      "field_path": "team2.players[].threefg",
+      "source": "region.team2_players.column[3]",
+      "transform": "strip"
+    },
+    {
+      "field_path": "team2.players[].ft",
+      "source": "region.team2_players.column[4]",
+      "transform": "strip"
+    },
+    {
+      "field_path": "team2.players[].oreb",
+      "source": "region.team2_players.column[6]",
+      "transform": "to_int"
+    },
+    {
+      "field_path": "team2.players[].dreb",
+      "source": "region.team2_players.column[7]",
+      "transform": "to_int"
+    },
+    {
+      "field_path": "team2.players[].turnovers",
+      "source": "region.team2_players.column[10]",
+      "transform": "to_int"
+    },
+    {
+      "field_path": "team2.players[].fouls",
+      "source": "region.team2_players.column[11]",
+      "transform": "to_int"
+    }
+  ],
+  "calculations": [
+    {
+      "field": "team1.total_fouls",
+      "formula": "sum(team1.players[].fouls)",
+      "description": "Sum individual player fouls from player table"
+    },
+    {
+      "field": "team1.total_rebounds",
+      "formula": "sum(team1.players[].oreb) + sum(team1.players[].dreb)",
+      "description": "Sum offensive + defensive rebounds from player table"
+    },
+    {
+      "field": "team1.total_turnovers",
+      "formula": "sum(team1.players[].turnovers)",
+      "description": "Sum individual player turnovers from player table"
+    },
+    {
+      "field": "team2.total_fouls",
+      "formula": "sum(team2.players[].fouls)",
+      "description": "Sum individual player fouls from player table"
+    },
+    {
+      "field": "team2.total_rebounds",
+      "formula": "sum(team2.players[].oreb) + sum(team2.players[].dreb)",
+      "description": "Sum offensive + defensive rebounds from player table"
+    },
+    {
+      "field": "team2.total_turnovers",
+      "formula": "sum(team2.players[].turnovers)",
+      "description": "Sum individual player turnovers from player table"
+    }
+  ],
+  "validations": [
+    {
+      "name": "Both teams present",
+      "check": "'home_team' in data and 'away_team' in data",
+      "severity": "error"
+    },
+    {
+      "name": "Team names not empty",
+      "check": "data.get('home_team', {}).get('name') and data.get('away_team', {}).get('name')",
+      "severity": "error"
+    },
+    {
+      "name": "Final scores present",
+      "check": "'final_score' in data.get('home_team', {}) and 'final_score' in data.get('away_team', {})",
+      "severity": "error"
+    },
+    {
+      "name": "Period scores sum to final (home)",
+      "check": "sum(data.get('home_team', {}).get('period_scores', [])) == data.get('home_team', {}).get('final_score', 0)",
+      "severity": "warning"
+    },
+    {
+      "name": "Period scores sum to final (away)",
+      "check": "sum(data.get('away_team', {}).get('period_scores', [])) == data.get('away_team', {}).get('final_score', 0)",
+      "severity": "warning"
+    }
+  ],
+  "template_id": "basketball_windom",
+  "created_at": "2025-12-19T15:13:01.973846",
+  "updated_at": "2025-12-19T15:13:01.973851",
+  "version": 1
+}Failed to create processor windom_basketball_v2: (sqlite3.IntegrityError) UNIQUE constraint failed: processors.name
+[SQL: INSERT INTO processors (id, name, document_type, processor_json, created_at, updated_at, version, success_count, failure_count, last_used) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('8162deb0-8df1-4bae-aa22-036d50bd0168', 'windom_basketball_v2', 'basketball', '{\n  "id": "8162deb0-8df1-4bae-aa22-036d50bd0168",\n  "name": "windom_basketball_v2",\n  "document_type": "basketball",\n  "layout_hash": "9cc4fb340d ... (8555 characters truncated) ...  "template_id": "basketball_windom",\n  "created_at": "2025-12-19T15:13:01.973846",\n  "updated_at": "2025-12-19T15:13:01.973851",\n  "version": 1\n}', '2025-12-19 15:13:02.013900', '2025-12-19 15:13:02.013905', 1, 0, 0, None)]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+
+
+Traceback (most recent call last):
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\engine\base.py", line 1964, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\engine\default.py", line 945, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py", line 172, in execute
+    self._adapt_connection._handle_exception(error)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py", line 323, in _handle_exception
+    raise error
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py", line 154, in execute
+    self.await_(_cursor.execute(operation, parameters))
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 132, in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 196, in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\aiosqlite\cursor.py", line 40, in execute
+    await self._execute(self._cursor.execute, sql, parameters)
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\aiosqlite\cursor.py", line 32, in _execute
+    return await self._conn._execute(fn, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\aiosqlite\core.py", line 122, in _execute
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\aiosqlite\core.py", line 105, in run
+    result = function()
+sqlite3.IntegrityError: UNIQUE constraint failed: processors.name
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\trevo\quadd-extract\test_improved_synthesis.py", line 76, in <module>
+    asyncio.run(main())
+    ~~~~~~~~~~~^^^^^^^^
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\asyncio\runners.py", line 195, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\asyncio\base_events.py", line 725, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "C:\Users\trevo\quadd-extract\test_improved_synthesis.py", line 67, in main
+    saved_id = await db.create_processor(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+    )
+    ^
+  File "C:\Users\trevo\quadd-extract\src\db\database.py", line 127, in create_processor
+    await session.commit()
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\ext\asyncio\session.py", line 1015, in commit
+    await greenlet_spawn(self.sync_session.commit)
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 203, in greenlet_spawn
+    result = context.switch(value)
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\session.py", line 2032, in commit
+    trans.commit(_to_root=True)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "<string>", line 2, in commit
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 139, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\session.py", line 1313, in commit
+    self._prepare_impl()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "<string>", line 2, in _prepare_impl
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 139, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\session.py", line 1288, in _prepare_impl
+    self.session.flush()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\session.py", line 4353, in flush
+    self._flush(objects)
+    ~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\session.py", line 4488, in _flush
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 146, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\session.py", line 4449, in _flush
+    flush_context.execute()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+    ~~~~~~~~~~~^^^^^^
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self.mapper,
+        ^^^^^^^^^^^^
+        uow.states_for_mapper_hierarchy(self.mapper, False, False),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        uow,
+        ^^^^
+    )
+    ^
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        base_mapper,
+        ^^^^^^^^^^^^
+    ...<3 lines>...
+        insert,
+        ^^^^^^^
+    )
+    ^
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\persistence.py", line 1048, in _emit_insert_statements
+    result = connection.execute(
+        statement, multiparams, execution_options=execution_options
+    )
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\engine\base.py", line 1416, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\sql\elements.py", line 523, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\engine\base.py", line 1638, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\engine\base.py", line 1843, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\engine\base.py", line 1983, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\engine\base.py", line 2352, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\engine\base.py", line 1964, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\engine\default.py", line 945, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py", line 172, in execute
+    self._adapt_connection._handle_exception(error)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py", line 323, in _handle_exception
+    raise error
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\dialects\sqlite\aiosqlite.py", line 154, in execute
+    self.await_(_cursor.execute(operation, parameters))
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 132, in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 196, in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\aiosqlite\cursor.py", line 40, in execute
+    await self._execute(self._cursor.execute, sql, parameters)
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\aiosqlite\cursor.py", line 32, in _execute
+    return await self._conn._execute(fn, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\aiosqlite\core.py", line 122, in _execute
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\trevo\AppData\Local\Programs\Python\Python313\Lib\site-packages\aiosqlite\core.py", line 105, in run
+    result = function()
+sqlalchemy.exc.IntegrityError: (sqlite3.IntegrityError) UNIQUE constraint failed: processors.name
+[SQL: INSERT INTO processors (id, name, document_type, processor_json, created_at, updated_at, version, success_count, failure_count, last_used) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('8162deb0-8df1-4bae-aa22-036d50bd0168', 'windom_basketball_v2', 'basketball', '{\n  "id": "8162deb0-8df1-4bae-aa22-036d50bd0168",\n  "name": "windom_basketball_v2",\n  "document_type": "basketball",\n  "layout_hash": "9cc4fb340d ... (8555 characters truncated) ...  "template_id": "basketball_windom",\n  "created_at": "2025-12-19T15:13:01.973846",\n  "updated_at": "2025-12-19T15:13:01.973851",\n  "version": 1\n}', '2025-12-19 15:13:02.013900', '2025-12-19 15:13:02.013905', 1, 0, 0, None)]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)

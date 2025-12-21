@@ -667,7 +667,8 @@ async def get_processor_details(processor_id: str):
             "regions": processor_json.get('regions', []),
             "extraction_ops": processor_json.get('extraction_ops', []),
             "validations": processor_json.get('validations', []),
-            "template_id": processor_json.get('template_id', 'generic')
+            "template_id": processor_json.get('template_id', 'generic'),
+            "template": processor_json.get('template')
         }
 
     except HTTPException:
@@ -700,6 +701,299 @@ async def delete_processor(processor_id: str):
         raise
     except Exception as e:
         logger.exception(f"Failed to delete processor: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =============================================================================
+# SIMPLE TRANSFORMER ENDPOINTS
+# =============================================================================
+
+@app.post("/api/simple/learn")
+async def simple_learn(
+    name: str = Form(...),
+    document_type: str = Form(...),
+    example_file: UploadFile = File(...),
+    desired_output: str = Form(...),
+):
+    """
+    Learn transformation using Simple Transformer.
+
+    Simple LLM-based approach:
+    1. Extract raw text from PDF
+    2. Store example input/output pair
+    3. Use LLM to transform new documents the same way
+
+    No complex column mapping, anchors, or regions.
+    """
+    try:
+        # Import here to avoid circular dependencies
+        from src.simple_transformer import SimpleTransformerDB
+        import uuid
+
+        # Generate processor ID
+        processor_id = str(uuid.uuid4())
+
+        # Read file
+        pdf_bytes = await example_file.read()
+
+        # Create simple transformer
+        simple_transformer = SimpleTransformerDB(
+            db=app.state.db,
+            api_key=os.getenv("ANTHROPIC_API_KEY")
+        )
+
+        # Learn from example
+        result = await simple_transformer.learn_from_example(
+            processor_id=processor_id,
+            name=name,
+            input_pdf_bytes=pdf_bytes,
+            desired_output=desired_output
+        )
+
+        logger.info(f"Simple transformer learned: {processor_id}")
+
+        return {
+            "status": "success",
+            "processor_id": processor_id,
+            "name": name,
+            "document_type": document_type,
+            "input_length": result['input_length'],
+            "output_length": result['output_length']
+        }
+
+    except Exception as e:
+        logger.exception(f"Simple learning failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/simple/transform")
+async def simple_transform(
+    processor_id: str = Form(...),
+    file: Optional[UploadFile] = File(None),
+    text: Optional[str] = Form(None),
+):
+    """
+    Transform document using Simple Transformer.
+
+    Accepts EITHER:
+    - file (PDF upload) - uses OCR + Vision
+    - text (pasted text) - uses text directly, no OCR needed
+
+    Uses a previously learned processor to transform a new document.
+    """
+    try:
+        from src.simple_transformer import SimpleTransformerDB
+
+        # Validate input
+        if not file and not text:
+            raise HTTPException(status_code=400, detail="Please provide either a PDF file or pasted text")
+        if file and text:
+            raise HTTPException(status_code=400, detail="Please provide either a PDF file OR pasted text, not both")
+
+        # Create simple transformer
+        simple_transformer = SimpleTransformerDB(
+            db=app.state.db,
+            api_key=os.getenv("ANTHROPIC_API_KEY")
+        )
+
+        # Transform based on input type
+        if file:
+            # PDF upload - use OCR + Vision
+            pdf_bytes = await file.read()
+            result = await simple_transformer.transform(
+                processor_id=processor_id,
+                new_pdf_bytes=pdf_bytes
+            )
+            logger.info(f"Simple transformation (PDF) complete: {processor_id}")
+        else:
+            # Text input - use text directly
+            result = await simple_transformer.transform_text(
+                processor_id=processor_id,
+                new_text=text
+            )
+            logger.info(f"Simple transformation (text) complete: {processor_id}")
+
+        return {
+            "status": "success",
+            "processor_id": processor_id,
+            "output": result['output'],
+            "tokens_used": result['tokens_used']
+        }
+
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.exception(f"Simple transformation failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/simple/processors")
+async def list_simple_processors():
+    """
+    List ALL processors (including old ones).
+
+    Returns list of all processors with id, name, type, and created date.
+    Allows users to manage and delete old processors.
+    """
+    try:
+        # Get all processors from database (no filtering)
+        all_processors = await app.state.db.list_processors()
+
+        # Return all processors with their info
+        processors_list = []
+        for proc in all_processors:
+            processors_list.append({
+                'id': proc['id'],
+                'name': proc['name'],
+                'document_type': proc['document_type'],
+                'created_at': proc.get('created_at', 'Unknown'),
+                'success_count': proc.get('success_count', 0),
+                'failure_count': proc.get('failure_count', 0)
+            })
+
+        logger.info(f"Listed {len(processors_list)} processors (all types)")
+
+        return {
+            "status": "success",
+            "processors": processors_list
+        }
+
+    except Exception as e:
+        logger.exception(f"Failed to list processors: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/api/simple/processors/{processor_id}")
+async def update_simple_processor(
+    processor_id: str,
+    name: Optional[str] = Form(None),
+    desired_output: Optional[str] = Form(None)
+):
+    """
+    Update a simple transformer processor's name or example output.
+
+    Can update name, desired_output, or both.
+    Does not require re-uploading the PDF.
+    """
+    try:
+        from src.processors.models import Processor
+        import json
+
+        # Get existing processor
+        processor_data = await app.state.db.get_processor(processor_id)
+        if not processor_data:
+            raise HTTPException(status_code=404, detail=f"Processor '{processor_id}' not found")
+
+        processor = Processor.from_json(processor_data['processor_json'])
+
+        # Update name if provided
+        if name is not None:
+            processor.name = name
+
+        # Update desired output if provided
+        if desired_output is not None:
+            # Parse template to get current data
+            template_data = json.loads(processor.template)
+
+            # Update output_text
+            template_data['output_text'] = desired_output
+
+            # Save back to template
+            processor.template = json.dumps(template_data)
+
+        # Save updated processor
+        processor_json = processor.to_json()
+
+        await app.state.db.update_processor(
+            processor_id=processor_id,
+            name=processor.name if name is not None else processor_data['name'],
+            document_type=processor.document_type,
+            processor_json=processor_json
+        )
+
+        logger.info(f"Updated processor: {processor_id}")
+
+        return {
+            "status": "success",
+            "processor_id": processor_id,
+            "message": "Processor updated successfully"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Failed to update processor: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/simple/processors/{processor_id}")
+async def delete_simple_processor(processor_id: str):
+    """
+    Delete a simple transformer processor.
+
+    Permanently removes the processor from the database.
+    """
+    try:
+        # Check if processor exists
+        processor_data = await app.state.db.get_processor(processor_id)
+        if not processor_data:
+            raise HTTPException(status_code=404, detail=f"Processor '{processor_id}' not found")
+
+        # Delete processor
+        await app.state.db.delete_processor(processor_id)
+
+        logger.info(f"Deleted processor: {processor_id}")
+
+        return {
+            "status": "success",
+            "processor_id": processor_id,
+            "message": "Processor deleted successfully"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Failed to delete processor: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/simple/processors/bulk-delete")
+async def bulk_delete_processors(
+    processor_ids: list[str]
+):
+    """
+    Delete multiple processors at once.
+
+    Accepts a list of processor IDs and deletes them all.
+    """
+    try:
+        deleted_count = 0
+        failed_ids = []
+
+        for processor_id in processor_ids:
+            try:
+                # Check if processor exists
+                processor_data = await app.state.db.get_processor(processor_id)
+                if processor_data:
+                    await app.state.db.delete_processor(processor_id)
+                    deleted_count += 1
+                    logger.info(f"Deleted processor: {processor_id}")
+                else:
+                    failed_ids.append(processor_id)
+            except Exception as e:
+                logger.error(f"Failed to delete processor {processor_id}: {e}")
+                failed_ids.append(processor_id)
+
+        return {
+            "status": "success",
+            "deleted_count": deleted_count,
+            "failed_count": len(failed_ids),
+            "failed_ids": failed_ids,
+            "message": f"Deleted {deleted_count} processor(s)"
+        }
+
+    except Exception as e:
+        logger.exception(f"Bulk delete failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

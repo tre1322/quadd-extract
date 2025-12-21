@@ -23,171 +23,317 @@ from src.processors.validator import make_basketball_validations, make_hockey_va
 logger = logging.getLogger(__name__)
 
 
-SYNTHESIS_PROMPT_TEMPLATE = """You are a document extraction rule synthesizer. Your job is to generate extraction rules that transform an input document into a desired output format.
+FIELD_MAPPING_SYNTHESIS_PROMPT = """You are a field mapping analyzer. Your job is to map field names from desired output to column headers in the source document.
 
 ## TASK
-Generate a JSON Processor configuration that defines how to extract structured data from the given document type.
+Analyze the source document's column headers and the desired output field names, then generate a mapping dictionary.
 
-## DOCUMENT TYPE
-{document_type}
-
-## CRITICAL INSTRUCTIONS
-1. **Look for PLAYER-LEVEL DATA**: If the desired output contains individual player stats, you MUST find and extract from player tables
-2. **Calculate TEAM TOTALS FROM PLAYERS**: When output shows team totals (Fouls, Rebounds, Turnovers), these MUST be CALCULATED by summing the corresponding columns from the PLAYERS array
-   - Example: Team fouls = sum(team1.players[].fouls) where "fouls" is the player's individual foul count
-   - Example: Team rebounds = sum(team1.players[].oreb) + sum(team1.players[].dreb)
-   - DO NOT sum from region data or team stats - ONLY from individual player rows
-3. **Check ALL PAGES**: Player stats tables are often on page 2 or later pages, not just page 1
-4. **CRITICAL - Use ONLY column headers as player table anchors**:
-   - ✅ GOOD: patterns: ["Name"] - column header, unique, on correct page
-   - ✅ GOOD: patterns: ["Pts"] - column header, unique identifier
-   - ❌ BAD: patterns: ["Worthington", "High", "School's"] - team name appears on multiple pages
-   - ❌ BAD: patterns: ["Boys", "Varsity"] - generic words appear everywhere
-   - **RULE**: For player table anchors, use ONLY single column headers like "Name", "Pts", "FG"
-   - Team names can be used for score regions, but NOT for player table regions
-5. **Extract BOTH TEAMS**: Apply the same extraction logic to ALL teams in the document
-
-## DOCUMENT STRUCTURE
-The document has been analyzed with OCR and contains the following text blocks with their positions:
-
-{block_summary}
+## SOURCE DOCUMENT COLUMNS
+{source_columns}
 
 ## DESIRED OUTPUT
 {desired_output}
 
-## ANALYSIS GUIDE
-Before generating rules, analyze:
-1. Does the desired output contain individual player names and stats? → Need to extract from player table
-2. Does it show team totals (Fouls, Rebounds, etc.)? → Calculate by summing player columns
-3. What column headers exist? → Use them as anchors to find player tables
-4. How many teams? → Create extraction rules for each team
+## INSTRUCTIONS
+1. **Identify fields in desired output** - Look for data elements (player names, scores, stats, etc.)
+2. **Match to source columns** - Map each field to the corresponding column header in the source
+3. **Use exact column names** - Column names must match exactly as they appear in source (case-sensitive)
+4. **Be generic** - Field names should describe the data, not the sport/domain
 
-## YOUR TASK
-Generate extraction rules in JSON format with these components:
+## OUTPUT FORMAT
+Return ONLY a JSON object mapping field names to column headers. No explanations, no markdown code blocks.
 
-1. **anchors**: Landmark patterns to find in the document (headers, team names, section markers)
-   - Each anchor should have: name, patterns (list of text to search for), pattern_type ("contains", "exact", or "regex"), location_hint (optional), required (true/false)
+Example for a basketball document:
+```json
+{{
+  "player_name": "Name",
+  "points": "Pts",
+  "field_goals": "FG",
+  "three_pointers": "3FG",
+  "free_throws": "FT",
+  "offensive_rebounds": "OREB",
+  "defensive_rebounds": "DREB",
+  "assists": "AST",
+  "turnovers": "TO",
+  "fouls": "FOUL"
+}}
+```
 
-2. **regions**: Areas of the document defined by start/end anchors
-   - Each region should have: name, start_anchor (reference to anchor name), end_anchor, region_type ("table", "list", "key_value")
+Example for an honor roll document:
+```json
+{{
+  "student_name": "Name",
+  "grade_level": "Grade",
+  "gpa": "GPA"
+}}
+```
 
-3. **extraction_ops**: Operations to extract specific fields from regions or anchors
-   - Each op should have: field_path (where to store the value), source (where to extract from), transform (optional transformation like "to_int", "strip")
+## IMPORTANT
+- Field names should be descriptive and generic (use "student_name" not "name", "total_points" not "points")
+- Column names must match source exactly (case-sensitive)
+- Only include mappings for fields that appear in the desired output
+- If a field in the output doesn't have a corresponding column in the source, omit it from the mapping
 
-4. **template_id**: Which output template to use (e.g., "basketball_windom", "hockey_standard", "generic")
+Generate the mapping now:"""
 
-## SOURCE SYNTAX
-- "anchor.{{anchor_name}}.text" - Extract text from an anchor block
-- "region.{{region_name}}.column[N]" - Extract column N from a table region
-- For arrays, use "[]" in field_path like "players[].name"
 
-## TRANSFORMS
-Available transforms: "to_int", "to_float", "strip", "last_name_only", "upper", "lower"
+TEMPLATE_SYNTHESIS_PROMPT = """You are a Jinja2 template generator. Your job is to analyze a desired output string and generate a Jinja2 template that can reproduce that exact format.
 
-## EXAMPLE: Basketball with Player Tables
+## TASK
+Generate a Jinja2 template that, when given the appropriate data structure, will produce output matching the desired format exactly.
+
+## DESIRED OUTPUT
+{desired_output}
+
+## ANALYSIS INSTRUCTIONS
+1. **Identify the structure**: Look for repeating patterns, sections, headers
+2. **Identify placeholders**: Find values that would come from data (team names, scores, player names, stats)
+3. **Infer data structure**: Determine what the data dictionary should look like
+4. **Generate template**: Create Jinja2 syntax that produces this output
+
+## TEMPLATE REQUIREMENTS
+1. Use Jinja2 syntax: `{{{{ variable }}}}`, `{{% for item in list %}}...{{% endfor %}}`
+2. Assume data is available in a dict called `data`
+3. **ONLY use the filters listed below** - no other filters are available
+4. Handle missing/optional data gracefully with defaults
+5. Match the exact spacing, punctuation, and line breaks of the desired output
+6. Use comments `{{#- ... -#}}` to explain non-obvious logic
+7. Do spacing with literal spaces in the template, NOT with ljust/rjust/center filters
+
+## AVAILABLE JINJA2 FILTERS (USE ONLY THESE)
+- `dot_pad(width)` - Pad text with dots to width (e.g., "Team Name" becomes "Team Name..........")
+- `safe_int(default=0)` - Convert to int, return default if None
+- `safe_float(default=0.0)` - Convert to float, return default if None
+- Standard Jinja filters: `join`, `length`, `default`, `round`, `int`, `string`
+
+## AVAILABLE JINJA2 FUNCTIONS (callable in expressions)
+- `pct(made, attempted)` - Calculate percentage as "(X%)"
+- `safe_int(value)` - Convert to int safely
+
+## IMPORTANT: Spacing and Alignment
+- Use `dot_pad()` for dot leaders (e.g., team names)
+- Use literal spaces for fixed-width columns
+- Use `"value"|string` to convert numbers to strings
+- Do NOT use ljust, rjust, or center - these are not available
+
+## EXAMPLE DATA STRUCTURE PATTERNS
+For sports with two teams:
+```
+{{{{
+  "team1": {{"name": "...", "final_score": 72, "players": [...]}},
+  "team2": {{"name": "...", "final_score": 68, "players": [...]}}
+}}}}
+```
+or
+```
+{{{{
+  "away_team": {{"name": "...", "final_score": 72}},
+  "home_team": {{"name": "...", "final_score": 68}}
+}}}}
+```
+
+For lists of items:
+```
+{{{{
+  "items": [
+    {{"name": "Item 1", "value": 10}},
+    {{"name": "Item 2", "value": 20}}
+  ]
+}}}}
+```
+
+## OUTPUT FORMAT
+Return ONLY the Jinja2 template text. No explanations, no markdown code blocks, just the raw template.
+
+## IMPORTANT
+- The template must be GENERIC - it should work for ANY document of this type, not just this example
+- Use loops for repeated elements (player lists, scores, etc.)
+- Use conditionals for optional elements
+- Preserve exact formatting (dots, spaces, line breaks) from the desired output
+- If you see "..." in the desired output, that indicates a loop - use `{{% for %}}` syntax
+
+Generate the template now:"""
+
+
+SYNTHESIS_PROMPT_TEMPLATE = """You are a document extraction rule synthesizer. Your job is to analyze a source document and desired output, then generate extraction rules that transform the source into the output format.
+
+## TASK
+Generate a JSON Processor configuration that defines how to extract structured data from the source document.
+
+## SOURCE DOCUMENT STRUCTURE
+The document has been analyzed with OCR and contains the following text blocks with their positions:
+
+{block_summary}
+
+## DESIRED OUTPUT FORMAT
+{desired_output}
+
+## YOUR JOB
+1. **Analyze the SOURCE document**:
+   - Identify tables (repeating rows/columns of data)
+   - Identify column headers (short text, often uppercase/title case)
+   - Identify section markers (headers, dividers, labels)
+   - Identify repeated patterns (lists, sequences)
+
+2. **Analyze the DESIRED OUTPUT**:
+   - What fields appear in the output?
+   - What structure does it have? (lists, hierarchies, key-value pairs)
+   - What aggregations are needed? (sums, counts, concatenations)
+
+3. **Learn the mapping**:
+   - Map output fields to source columns/sections
+   - Determine how to extract each piece of data
+   - Identify what calculations are needed
+
+## EXTRACTION STRATEGY
+
+### For Tabular Data
+If you see a table in the source (columns with headers):
+- Use column headers as anchors to locate the table
+- Define a region for the table rows
+- Extract each column as a field
+- Use column position (column[0], column[1], etc.)
+
+### For Lists/Sequences
+If you see repeated items:
+- Find the start/end markers
+- Define a region for the list
+- Extract each item's fields
+
+### For Key-Value Pairs
+If you see labeled data (e.g., "Date: 2024-01-15"):
+- Use the label as an anchor
+- Extract the text following the anchor
+
+### For Aggregations
+If the desired output shows totals/sums that aren't in the source:
+- Identify which fields to sum/aggregate
+- Create calculations using formulas
+
+## OUTPUT FORMAT
+
+Generate JSON with these components:
+
+### 1. anchors
+Landmark patterns to find in the document.
+
+Each anchor:
+- name: Descriptive identifier (e.g., "table_header_row", "section_marker")
+- patterns: List of text to match (e.g., ["Name"], ["ID"], ["Total:"])
+- pattern_type: "contains", "exact", or "regex"
+- location_hint: Optional ("first_occurrence", "second_occurrence", "top_third")
+- required: true/false
+
+**Strategy**:
+- Use short, distinctive text that uniquely identifies a location
+- Column headers make good anchors for tables
+- Section titles make good anchors for regions
+
+### 2. regions
+Areas of the document defined by start/end anchors.
+
+Each region:
+- name: Descriptive identifier (e.g., "data_table", "summary_section")
+- start_anchor: Reference to anchor name
+- end_anchor: Reference to anchor name
+- region_type: "table", "list", or "key_value"
+
+### 3. extraction_ops
+Operations to extract specific fields.
+
+Each extraction_op:
+- field_path: Where to store (e.g., "items[].name", "metadata.date")
+  - Use `[]` for arrays (e.g., "items[].value")
+  - Use `.` for nested objects (e.g., "section.field")
+- source: Where to extract from
+  - "region.{{name}}.column[N]" for tables
+  - "anchor.{{name}}.text" for single values
+  - "region.{{name}}" for concatenated text
+- transform: Optional ("to_int", "to_float", "strip", "upper", "lower")
+
+### 4. calculations (optional)
+Derived fields calculated from extracted data.
+
+Each calculation:
+- field: Output field name (e.g., "totals.sum", "statistics.count")
+- formula: Python expression (e.g., "sum(items[].value)", "len(items)")
+- description: What this calculates
+
+## EXAMPLE: Generic Data Table
+
+If source has:
+```
+Name    Value   Status
+Item A  100     Active
+Item B  200     Pending
+```
+
+And desired output is:
+```
+Items:
+- Item A: 100 (Active)
+- Item B: 200 (Pending)
+Total: 300
+```
+
+Then generate:
 ```json
 {{
   "anchors": [
     {{
-      "name": "team1_player_table_start",
+      "name": "table_start",
       "patterns": ["Name"],
       "pattern_type": "exact",
-      "location_hint": "first_occurrence",
       "required": true
-    }},
-    {{
-      "name": "team2_player_table_start",
-      "patterns": ["Name"],
-      "pattern_type": "exact",
-      "location_hint": "second_occurrence",
-      "required": true
-    }},
-    {{
-      "name": "pts_column",
-      "patterns": ["Pts"],
-      "pattern_type": "exact",
-      "location_hint": null,
-      "required": false
-    }},
-    {{
-      "name": "foul_column",
-      "patterns": ["FOUL"],
-      "pattern_type": "exact",
-      "location_hint": null,
-      "required": false
     }}
   ],
   "regions": [
     {{
-      "name": "team1_players",
-      "start_anchor": "player_stats_header",
-      "end_anchor": "team2_players_start",
-      "region_type": "table"
-    }},
-    {{
-      "name": "team2_players",
-      "start_anchor": "team2_players_start",
+      "name": "data_rows",
+      "start_anchor": "table_start",
       "end_anchor": "end_of_document",
       "region_type": "table"
     }}
   ],
   "extraction_ops": [
     {{
-      "field_path": "team1.players[].name",
-      "source": "region.team1_players.column[0]",
+      "field_path": "items[].name",
+      "source": "region.data_rows.column[0]",
       "transform": "strip"
     }},
     {{
-      "field_path": "team1.players[].points",
-      "source": "region.team1_players.column[1]",
+      "field_path": "items[].value",
+      "source": "region.data_rows.column[1]",
       "transform": "to_int"
     }},
     {{
-      "field_path": "team1.players[].fouls",
-      "source": "region.team1_players.column[8]",
-      "transform": "to_int"
-    }},
-    {{
-      "field_path": "team2.players[].name",
-      "source": "region.team2_players.column[0]",
+      "field_path": "items[].status",
+      "source": "region.data_rows.column[2]",
       "transform": "strip"
-    }},
-    {{
-      "field_path": "team2.players[].fouls",
-      "source": "region.team2_players.column[8]",
-      "transform": "to_int"
     }}
   ],
   "calculations": [
     {{
-      "field": "team1.total_fouls",
-      "formula": "sum(team1.players[].fouls)"
-    }},
-    {{
-      "field": "team1.total_rebounds",
-      "formula": "sum(team1.players[].oreb) + sum(team1.players[].dreb)"
-    }},
-    {{
-      "field": "team2.total_fouls",
-      "formula": "sum(team2.players[].fouls)"
+      "field": "totals.sum",
+      "formula": "sum(items[].value)",
+      "description": "Sum of all item values"
     }}
-  ],
-  "template_id": "basketball_windom"
+  ]
 }}
 ```
 
-## IMPORTANT RULES
-1. Return ONLY valid JSON, no explanations or markdown
-2. Make anchors specific enough to match uniquely but general enough to work on similar documents
-3. Use location_hint to disambiguate when multiple matches might exist
-4. For table regions, identify start/end clearly
-5. Match the output format exactly - if output has specific formatting, note that in template_id
-6. **CRITICAL**: Calculation formulas MUST use sum() with field paths, NEVER hardcoded numbers
-   - CORRECT: "formula": "sum(team1.players[].fouls)"
-   - WRONG: "formula": "9" or "formula": "17 + 30"
-7. Formulas must work on ANY document, not just this example
+## CRITICAL RULES
 
-Now generate the extraction rules:"""
+1. **NO ASSUMPTIONS**: Don't assume document type. Analyze what you SEE.
+2. **LEARN FROM OUTPUT**: If output shows sums/totals not in source, use calculations.
+3. **UNIQUE ANCHORS**: Use distinctive text that appears once (or use location_hint).
+4. **EXACT COLUMN POSITIONS**: Map each output field to the correct source column.
+5. **HANDLE ARRAYS**: Use `[]` in field_path for repeated items.
+6. **VALIDATE**: Extraction rules should produce output matching desired format.
+7. **RETURN ONLY JSON**: No explanations, no markdown code blocks.
+
+Generate the extraction rules now:"""
+
 
 
 class ProcessorSynthesizer:
@@ -214,6 +360,114 @@ class ProcessorSynthesizer:
         self.model = model
         self.executor = ProcessorExecutor()
 
+    async def synthesize_field_mapping(
+        self,
+        document_ir: DocumentIR,
+        desired_output: str
+    ) -> dict:
+        """
+        Generate field-to-column mapping from source document and desired output.
+
+        Args:
+            document_ir: Source document with column headers
+            desired_output: Example of desired formatted output
+
+        Returns:
+            Dictionary mapping field names to column headers
+
+        Raises:
+            ValueError: If mapping generation fails
+        """
+        logger.info("Synthesizing field-to-column mapping")
+
+        # Extract column headers from document blocks
+        # Look for blocks that appear to be column headers (short text, near top)
+        source_columns = []
+        for block in document_ir.blocks[:100]:  # Check first 100 blocks
+            # Headers are typically short, uppercase or title case
+            text = block.text.strip()
+            if len(text) <= 20 and (text.isupper() or text.istitle()):
+                source_columns.append(text)
+
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_columns = []
+        for col in source_columns:
+            if col not in seen:
+                seen.add(col)
+                unique_columns.append(col)
+
+        source_columns_str = ", ".join(unique_columns[:30])  # Limit to first 30
+        logger.debug(f"Found source columns: {source_columns_str}")
+
+        # Build prompt
+        prompt = FIELD_MAPPING_SYNTHESIS_PROMPT.format(
+            source_columns=source_columns_str,
+            desired_output=desired_output
+        )
+
+        # Call Claude
+        try:
+            response = self.client.messages.create(
+                model=self.model,
+                max_tokens=2048,
+                messages=[{"role": "user", "content": prompt}]
+            )
+
+            response_text = response.content[0].text.strip()
+
+            # Extract JSON from response
+            mapping = self._extract_json(response_text)
+
+            logger.info(f"Generated field mapping with {len(mapping)} fields")
+            logger.debug(f"Mapping: {mapping}")
+            return mapping
+
+        except Exception as e:
+            logger.error(f"Failed to synthesize field mapping: {e}")
+            raise ValueError(f"Field mapping synthesis failed: {e}")
+
+    async def synthesize_template(self, desired_output: str) -> str:
+        """
+        Generate a Jinja2 template from desired output format.
+
+        Args:
+            desired_output: Example of the desired formatted output
+
+        Returns:
+            Jinja2 template string that can reproduce the format
+
+        Raises:
+            ValueError: If template generation fails
+        """
+        logger.info("Synthesizing Jinja2 template from desired output")
+
+        # Build prompt
+        prompt = TEMPLATE_SYNTHESIS_PROMPT.format(desired_output=desired_output)
+
+        # Call Claude
+        try:
+            response = self.client.messages.create(
+                model=self.model,
+                max_tokens=4096,
+                messages=[{"role": "user", "content": prompt}]
+            )
+
+            template = response.content[0].text.strip()
+
+            # Remove markdown code blocks if present
+            if template.startswith("```jinja") or template.startswith("```"):
+                lines = template.split("\n")
+                # Remove first and last lines (the ``` markers)
+                template = "\n".join(lines[1:-1]) if len(lines) > 2 else template
+
+            logger.debug(f"Generated template: {len(template)} chars")
+            return template
+
+        except Exception as e:
+            logger.error(f"Failed to synthesize template: {e}")
+            raise ValueError(f"Template synthesis failed: {e}")
+
     async def synthesize(
         self,
         document_ir: DocumentIR,
@@ -238,7 +492,18 @@ class ProcessorSynthesizer:
         """
         logger.info(f"Synthesizing processor '{name}' for {document_type}")
 
-        # Build prompt
+        # Step 1: Synthesize field-to-column mapping
+        logger.info("Step 1/3: Synthesizing field-to-column mapping...")
+        field_mapping = await self.synthesize_field_mapping(document_ir, desired_output)
+        logger.info(f"Generated mapping with {len(field_mapping)} fields")
+
+        # Step 2: Synthesize Jinja2 template from desired output
+        logger.info("Step 2/3: Synthesizing output template...")
+        template = await self.synthesize_template(desired_output)
+        logger.info(f"Generated template: {len(template)} chars")
+
+        # Step 3: Synthesize extraction rules
+        logger.info("Step 3/3: Synthesizing extraction rules...")
         prompt = self._build_prompt(document_ir, desired_output, document_type)
 
         # Call Claude
@@ -260,7 +525,9 @@ class ProcessorSynthesizer:
                 processor_spec,
                 name,
                 document_type,
-                document_ir.layout_hash
+                document_ir.layout_hash,
+                template,  # Pass learned template
+                field_mapping  # Pass learned field mapping
             )
 
             # Validate by applying to example
@@ -290,12 +557,12 @@ class ProcessorSynthesizer:
         document_type: str
     ) -> str:
         """Build the LLM prompt for rule synthesis."""
-        # Summarize DocumentIR blocks (first 250 blocks to include data from multiple pages)
-        block_summary = self._summarize_blocks(document_ir.blocks[:250])
+        # Summarize ALL blocks to ensure LLM sees all column headers and data
+        # (Previously limited to 250, but this could miss critical headers)
+        block_summary = self._summarize_blocks(document_ir.blocks)
 
-        # Fill in template
+        # Fill in template (generic prompt doesn't need document_type)
         prompt = SYNTHESIS_PROMPT_TEMPLATE.format(
-            document_type=document_type,
             block_summary=block_summary,
             desired_output=desired_output
         )
@@ -345,7 +612,9 @@ class ProcessorSynthesizer:
         spec: dict,
         name: str,
         document_type: str,
-        layout_hash: str
+        layout_hash: str,
+        template: Optional[str] = None,
+        field_mapping: Optional[dict] = None
     ) -> Processor:
         """Build a Processor from LLM-generated spec."""
         # Parse anchors
@@ -411,7 +680,7 @@ class ProcessorSynthesizer:
             else:
                 validations = []
 
-        # Get template ID
+        # Get template ID (legacy, for backward compatibility)
         template_id = spec.get('template_id', 'generic')
 
         # Create processor
@@ -426,7 +695,9 @@ class ProcessorSynthesizer:
             extraction_ops=extraction_ops,
             calculations=calculations,
             validations=validations,
-            template_id=template_id
+            template_id=template_id,
+            template=template,  # Store learned template
+            field_column_mapping=field_mapping  # Store learned field mapping
         )
 
         return processor

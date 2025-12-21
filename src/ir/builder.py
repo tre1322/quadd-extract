@@ -96,15 +96,19 @@ class IRBuilder:
             page_height = page.rect.height
             page_dims.append((page_width, page_height))
 
-            # Render to image for Tesseract
-            mat = fitz.Matrix(self.dpi / 72, self.dpi / 72)
-            pix = page.get_pixmap(matrix=mat)
-            img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-
-            # Extract blocks with bboxes
-            blocks = self._extract_blocks_from_tesseract(
-                img, page_num, (page_width, page_height)
+            # Extract blocks using PyMuPDF's native text extraction
+            blocks = self._extract_blocks_from_pymupdf(
+                page, page_num, (page_width, page_height)
             )
+
+            # ADD: Use OCR for left column to get player names (rendered as images)
+            # Only for pages that likely have player tables (page 1+)
+            if page_num >= 1:
+                ocr_blocks = self._extract_name_column_with_ocr(
+                    page, page_num, (page_width, page_height)
+                )
+                blocks.extend(ocr_blocks)
+
             all_blocks.extend(blocks)
 
             # Extract tables (simple heuristic for Phase 1)
@@ -136,8 +140,176 @@ class IRBuilder:
             layout_hash=layout_hash,
             page_dimensions=page_dims,
             dpi=self.dpi,
-            extraction_method="tesseract"
+            extraction_method="pymupdf"
         )
+
+    def _extract_name_column_with_ocr(
+        self,
+        page: fitz.Page,
+        page_num: int,
+        page_dims: Tuple[float, float]
+    ) -> List[TextBlock]:
+        """
+        Extract player names from the left column using OCR.
+
+        Player names are rendered as images in the PDF, not as text,
+        so PyMuPDF can't extract them. We use Tesseract OCR on the
+        name column area specifically.
+
+        Args:
+            page: PyMuPDF Page object
+            page_num: Page number (0-indexed)
+            page_dims: (width, height) of page in points
+
+        Returns:
+            List of TextBlock objects containing player names
+        """
+        from PIL import Image
+
+        page_width, page_height = page_dims
+
+        # Render page to high-res image for OCR
+        pix = page.get_pixmap(dpi=self.dpi)
+        img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+
+        # Crop to name column area (left ~15% of page)
+        # Name column is roughly x: 0-120 points in a 612pt-wide page
+        name_col_width_pct = 0.20  # 20% of page width
+        crop_box = (0, 0, int(img.width * name_col_width_pct), img.height)
+        name_col_img = img.crop(crop_box)
+
+        # Run Tesseract OCR
+        ocr_data = pytesseract.image_to_data(name_col_img, output_type=Output.DICT)
+
+        blocks = []
+        block_id = 1000  # Start at high number to avoid conflicts with PyMuPDF blocks
+
+        for i in range(len(ocr_data['text'])):
+            text = ocr_data['text'][i].strip()
+            if not text:
+                continue
+
+            conf = int(ocr_data['conf'][i])
+            if conf < 30:  # Skip low-confidence results
+                continue
+
+            # Skip header text
+            if text in ['Name', 'Boys', 'Varsity', 'Basketball', "Basketball's", 'Stats',
+                       'Player', 'High', "High's", 'School', "School's"]:
+                continue
+
+            # Get bounding box in pixels
+            left = ocr_data['left'][i]
+            top = ocr_data['top'][i]
+            width = ocr_data['width'][i]
+            height = ocr_data['height'][i]
+
+            # Convert to points (scale from cropped image coords to page coords)
+            scale_x = page_width * name_col_width_pct / name_col_img.width
+            scale_y = page_height / name_col_img.height
+
+            left_pt = left * scale_x
+            top_pt = top * scale_y
+            width_pt = width * scale_x
+            height_pt = height * scale_y
+
+            # Normalize to 0-1 coordinate space
+            x0 = left_pt / page_width
+            y0 = top_pt / page_height
+            x1 = (left_pt + width_pt) / page_width
+            y1 = (top_pt + height_pt) / page_height
+
+            bbox = BoundingBox(
+                x0=x0,
+                y0=y0,
+                x1=x1,
+                y1=y1,
+                page=page_num
+            )
+
+            block = TextBlock(
+                id=f"page{page_num}_ocr{block_id}",
+                text=text,
+                bbox=bbox,
+                confidence=float(conf),
+                font_size=height_pt,
+                is_bold=False,
+                block_type="text"
+            )
+
+            blocks.append(block)
+            block_id += 1
+
+        logger.debug(f"OCR extracted {len(blocks)} name blocks from page {page_num}")
+        return blocks
+
+    def _extract_blocks_from_pymupdf(
+        self,
+        page: fitz.Page,
+        page_num: int,
+        page_dims: Tuple[float, float]
+    ) -> List[TextBlock]:
+        """
+        Extract text blocks with bounding boxes using PyMuPDF.
+
+        Args:
+            page: PyMuPDF Page object
+            page_num: Page number (0-indexed)
+            page_dims: (width, height) of page in points
+
+        Returns:
+            List of TextBlock objects
+        """
+        # Get words with positions
+        words = page.get_text("words")
+
+        page_width, page_height = page_dims
+
+        blocks = []
+        block_id = 0
+
+        for word in words:
+            x0, y0, x1, y1, text, block_no, line_no, word_no = word
+
+            # Skip empty text
+            text = text.strip()
+            if not text:
+                continue
+
+            # Normalize coordinates to 0-1 space
+            norm_x0 = x0 / page_width
+            norm_y0 = y0 / page_height
+            norm_x1 = x1 / page_width
+            norm_y1 = y1 / page_height
+
+            # Estimate font size from height
+            height_pt = y1 - y0
+            font_size = height_pt
+
+            bbox = BoundingBox(
+                x0=norm_x0,
+                y0=norm_y0,
+                x1=norm_x1,
+                y1=norm_y1,
+                page=page_num
+            )
+
+            block_type = self._infer_block_type(text, bbox, font_size)
+
+            block = TextBlock(
+                id=f"page{page_num}_block{block_id}",
+                text=text,
+                bbox=bbox,
+                confidence=100.0,  # PyMuPDF extraction is reliable
+                font_size=font_size,
+                is_bold=False,  # Could be enhanced later
+                block_type=block_type
+            )
+
+            blocks.append(block)
+            block_id += 1
+
+        return blocks
 
     def _build_from_image(self, image_bytes: bytes, filename: str) -> DocumentIR:
         """Build IR from image file."""

@@ -1,0 +1,206 @@
+{
+  "id": "ae49139c-01e8-4d63-a651-f48aae0f032f",
+  "name": "Basketball_HUDL",
+  "document_type": "Basketball",
+  "layout_hash": "79ae040b72d8239594b9be7304c58f20",
+  "text_patterns": [],
+  "anchors": [
+    {
+      "name": "header_title",
+      "patterns": [
+        "Box Score Report"
+      ],
+      "pattern_type": "contains",
+      "location_hint": null,
+      "required": true
+    },
+    {
+      "name": "game_info",
+      "patterns": [
+        "WHS vs"
+      ],
+      "pattern_type": "contains",
+      "location_hint": null,
+      "required": true
+    },
+    {
+      "name": "whs_player_header",
+      "patterns": [
+        "Boys Varsity Basketball's Player Stats"
+      ],
+      "pattern_type": "contains",
+      "location_hint": null,
+      "required": true
+    },
+    {
+      "name": "whs_player_columns",
+      "patterns": [
+        "Name",
+        "Pts",
+        "FG",
+        "3FG",
+        "FT"
+      ],
+      "pattern_type": "contains",
+      "location_hint": null,
+      "required": true
+    },
+    {
+      "name": "worthington_player_header",
+      "patterns": [
+        "Worthington High School's Player Stats"
+      ],
+      "pattern_type": "contains",
+      "location_hint": null,
+      "required": true
+    },
+    {
+      "name": "team_stats_header",
+      "patterns": [
+        "Team Stats"
+      ],
+      "pattern_type": "contains",
+      "location_hint": null,
+      "required": true
+    }
+  ],
+  "regions": [
+    {
+      "name": "whs_players",
+      "start_anchor": "whs_player_columns",
+      "end_anchor": "worthington_player_header",
+      "region_type": "table"
+    },
+    {
+      "name": "worthington_players",
+      "start_anchor": "worthington_player_header",
+      "end_anchor": "team_stats_header",
+      "region_type": "table"
+    },
+    {
+      "name": "team_stats_data",
+      "start_anchor": "team_stats_header",
+      "end_anchor": "end_of_document",
+      "region_type": "table"
+    }
+  ],
+  "extraction_ops": [
+    {
+      "field_path": "game.team1",
+      "source": "anchor.game_info.text",
+      "transform": "extract_team1"
+    },
+    {
+      "field_path": "game.team2",
+      "source": "anchor.game_info.text",
+      "transform": "extract_team2"
+    },
+    {
+      "field_path": "game.score",
+      "source": "anchor.game_info.text",
+      "transform": "extract_score"
+    },
+    {
+      "field_path": "whs_players[].number",
+      "source": "region.whs_players.column[0]",
+      "transform": "extract_number"
+    },
+    {
+      "field_path": "whs_players[].name",
+      "source": "region.whs_players.column[0]",
+      "transform": "extract_name"
+    },
+    {
+      "field_path": "whs_players[].points",
+      "source": "region.whs_players.column[1]",
+      "transform": "to_int"
+    },
+    {
+      "field_path": "whs_players[].fg",
+      "source": "region.whs_players.column[2]",
+      "transform": "strip"
+    },
+    {
+      "field_path": "whs_players[].three_fg",
+      "source": "region.whs_players.column[3]",
+      "transform": "strip"
+    },
+    {
+      "field_path": "whs_players[].ft",
+      "source": "region.whs_players.column[4]",
+      "transform": "strip"
+    },
+    {
+      "field_path": "worthington_players[].number",
+      "source": "region.worthington_players.column[0]",
+      "transform": "extract_number"
+    },
+    {
+      "field_path": "worthington_players[].name",
+      "source": "region.worthington_players.column[0]",
+      "transform": "extract_name"
+    },
+    {
+      "field_path": "worthington_players[].points",
+      "source": "region.worthington_players.column[1]",
+      "transform": "to_int"
+    },
+    {
+      "field_path": "worthington_players[].fg",
+      "source": "region.worthington_players.column[2]",
+      "transform": "strip"
+    },
+    {
+      "field_path": "worthington_players[].three_fg",
+      "source": "region.worthington_players.column[3]",
+      "transform": "strip"
+    },
+    {
+      "field_path": "worthington_players[].ft",
+      "source": "region.worthington_players.column[4]",
+      "transform": "strip"
+    },
+    {
+      "field_path": "team_stats.whs.fg_pct",
+      "source": "region.team_stats_data.column[0]",
+      "transform": "strip"
+    },
+    {
+      "field_path": "team_stats.worthington.fg_pct",
+      "source": "region.team_stats_data.column[1]",
+      "transform": "strip"
+    }
+  ],
+  "calculations": [
+    {
+      "field": "game.whs_total",
+      "formula": "sum(whs_players[].points)",
+      "description": "Total points for WHS"
+    },
+    {
+      "field": "game.worthington_total",
+      "formula": "sum(worthington_players[].points)",
+      "description": "Total points for Worthington"
+    }
+  ],
+  "validations": [],
+  "template_id": "generic",
+  "template": "{#- Game summary with team scores -#}\n{{ data.team1.name|dot_pad(50) }}{{ data.team1.q1_score|safe_int|string }} {{ data.team1.q2_score|safe_int|string }} \u2014 {{ data.team1.final_score|safe_int|string }}\n{{ data.team2.name|dot_pad(50) }}{{ data.team2.q1_score|safe_int|string }} {{ data.team2.q2_score|safe_int|string }} \u2014 {{ data.team2.final_score|safe_int|string }}\n{#- Team 1 player stats -#}\n{{ data.team1.name }} (FG-FT-TP): {% for player in data.team1.players %}{{ player.name }} {{ player.fg_made|safe_int }}-{{ player.ft_made|safe_int }}-{{ player.total_points|safe_int }}{% if not loop.last %}; {% endif %}{% endfor %}. FG: {{ data.team1.team_stats.fg_made|safe_int }}-{{ data.team1.team_stats.fg_attempted|safe_int }} {{ pct(data.team1.team_stats.fg_made|safe_int, data.team1.team_stats.fg_attempted|safe_int) }}. FT: {{ data.team1.team_stats.ft_made|safe_int }}-{{ data.team1.team_stats.ft_attempted|safe_int }} {{ pct(data.team1.team_stats.ft_made|safe_int, data.team1.team_stats.ft_attempted|safe_int) }}. 3Pt. FG: {{ data.team1.team_stats.three_made|safe_int }}-{{ data.team1.team_stats.three_attempted|safe_int }} ({{ pct(data.team1.team_stats.three_made|safe_int, data.team1.team_stats.three_attempted|safe_int) }} \u2014 {% for player in data.team1.three_point_scorers %}{% if player.count > 1 %}{{ player.name }} {{ player.count }}{% else %}{{ player.name }}{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}). Fouls: {{ data.team1.team_stats.fouls|safe_int }}. Fouled out: {% if data.team1.fouled_out %}{{ data.team1.fouled_out|join(\", \") }}{% else %}None{% endif %}. Rebs: {{ data.team1.team_stats.rebounds|safe_int }}. TOs: {{ data.team1.team_stats.turnovers|safe_int }}.\n{#- Team 2 player stats -#}\n{{ data.team2.name }} (FG-FT-TP): {% for player in data.team2.players %}{{ player.name }} {{ player.fg_made|safe_int }}-{{ player.ft_made|safe_int }}-{{ player.total_points|safe_int }}{% if not loop.last %}; {% endif %}{% endfor %}. FG: {{ data.team2.team_stats.fg_made|safe_int }}-{{ data.team2.team_stats.fg_attempted|safe_int }} {{ pct(data.team2.team_stats.fg_made|safe_int, data.team2.team_stats.fg_attempted|safe_int) }}. FT: {{ data.team2.team_stats.ft_made|safe_int }}-{{ data.team2.team_stats.ft_attempted|safe_int }} {{ pct(data.team2.team_stats.ft_made|safe_int, data.team2.team_stats.ft_attempted|safe_int) }}. 3Pt. FG: {{ data.team2.team_stats.three_made|safe_int }}-{{ data.team2.team_stats.three_attempted|safe_int }} ({{ pct(data.team2.team_stats.three_made|safe_int, data.team2.team_stats.three_attempted|safe_int) }} \u2014 {% for player in data.team2.three_point_scorers %}{% if player.count > 1 %}{{ player.name }} {{ player.count }}{% else %}{{ player.name }}{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}). Fouls: {{ data.team2.team_stats.fouls|safe_int }}. Fouled out: {% if data.team2.fouled_out %}{{ data.team2.fouled_out|join(\", \") }}{% else %}None{% endif %}. Rebs: {{ data.team2.team_stats.rebounds|safe_int }}. TOs: {{ data.team2.team_stats.turnovers|safe_int }}.",
+  "field_column_mapping": {
+    "team_name": "Team",
+    "player_name": "Name",
+    "points": "Pts",
+    "field_goals": "FG",
+    "three_pointers": "3FG",
+    "free_throws": "FT",
+    "minutes": "MINS",
+    "offensive_rebounds": "OREB",
+    "defensive_rebounds": "DREB",
+    "assists": "AST",
+    "steals": "STL",
+    "blocks": "BLK"
+  },
+  "created_at": "2025-12-20T01:26:14.294803",
+  "updated_at": "2025-12-20T01:26:14.294820",
+  "version": 1
+}

@@ -30,7 +30,7 @@ async def main():
         document_ir=document_ir,
         desired_output=desired_output,
         document_type="basketball",
-        name="windom_basketball_v2"
+        name="windom_basketball_complete"
     )
 
     print(f"Generated processor: {processor.name}")

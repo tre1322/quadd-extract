@@ -3,855 +3,1232 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stats Formatter - Turn Box Scores into Newspaper Text</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    },
-                }
+    <title>Universal Document Learning</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
             }
         }
-    </script>
-    <style>
-        * { font-family: 'Inter', sans-serif; }
-        
-        /* Smooth transitions */
-        .fade-in { animation: fadeIn 0.3s ease-out; }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
         }
-        
-        /* Drop zone styles */
-        .drop-zone { transition: all 0.2s ease; }
-        .drop-zone.active { border-color: #3b82f6; background-color: #eff6ff; transform: scale(1.01); }
-        
-        /* Card hover */
-        .template-card { transition: all 0.2s ease; }
-        .template-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px -5px rgba(0,0,0,0.1); }
-        
-        /* Success animation */
-        .success-bounce { animation: bounce 0.5s ease; }
-        @keyframes bounce {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
+
+        .card h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
-        
-        /* Loading dots */
-        .loading-dot { animation: loadingDot 1.4s infinite ease-in-out both; }
-        .loading-dot:nth-child(1) { animation-delay: -0.32s; }
-        .loading-dot:nth-child(2) { animation-delay: -0.16s; }
-        @keyframes loadingDot {
-            0%, 80%, 100% { transform: scale(0); }
-            40% { transform: scale(1); }
+
+        .tab-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
         }
-        
-        /* Nice scrollbar */
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        
-        /* Line clamp */
-        .line-clamp-3 {
-            display: -webkit-box;
-            -webkit-line-clamp: 3;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .tab-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .tab-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #555;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .form-group input[type="text"],
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input[type="text"]:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-group textarea {
+            min-height: 120px;
+            resize: vertical;
+            font-family: monospace;
+        }
+
+        .file-upload {
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f8f9ff;
+        }
+
+        .file-upload:hover {
+            background: #f0f2ff;
+            border-color: #5568d3;
+        }
+
+        .file-upload.has-file {
+            background: #e8f5e9;
+            border-color: #4caf50;
+        }
+
+        .file-upload input[type="file"] {
+            display: none;
+        }
+
+        .file-name {
+            margin-top: 10px;
+            color: #4caf50;
+            font-weight: 600;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #333;
+            margin-top: 10px;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #e0e0e0;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .output-area {
+            background: #f5f5f5;
+            border-radius: 8px;
+            padding: 20px;
+            min-height: 400px;
+            max-height: 600px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            line-height: 1.6;
+        }
+
+        .output-area.empty {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-style: italic;
+        }
+
+        .status {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .status.show {
+            display: block;
+        }
+
+        .status.success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #4caf50;
+        }
+
+        .status.error {
+            background: #ffebee;
+            color: #c62828;
+            border: 1px solid #f44336;
+        }
+
+        .status.info {
+            background: #e3f2fd;
+            color: #1565c0;
+            border: 1px solid #2196f3;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .help-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+            font-style: italic;
+        }
+
+        .icon {
+            font-size: 1.2rem;
+        }
+
+        /* Manage Processors Styles */
+        .processor-card {
+            background: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            transition: all 0.2s;
+        }
+
+        .processor-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+        }
+
+        .processor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .processor-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: #333;
+            cursor: pointer;
+        }
+
+        .processor-name:hover {
+            color: #667eea;
+        }
+
+        .processor-meta {
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 12px;
+        }
+
+        .processor-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 0.85rem;
+        }
+
+        .btn-danger {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #d32f2f;
+        }
+
+        /* Processor type badges */
+        .processor-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        .badge-new {
+            background: #4caf50;
+            color: white;
+        }
+
+        .badge-old {
+            background: #ff9800;
+            color: white;
+        }
+
+        /* Multi-select checkbox */
+        .processor-checkbox {
+            margin-right: 12px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .processor-header-with-checkbox {
+            display: flex;
+            align-items: center;
+        }
+
+        /* Bulk actions toolbar */
+        .bulk-actions {
+            background: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .bulk-actions.hidden {
+            display: none;
+        }
+
+        .selection-count {
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            color: #333;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #999;
+        }
+
+        .modal-close:hover {
+            color: #333;
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
         }
     </style>
 </head>
-<body class="bg-gradient-to-br from-slate-50 to-blue-50 min-h-screen">
-    <div id="root"></div>
-    
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
-    <script type="text/babel">
-        const { useState, useRef, useEffect, useCallback } = React;
-        
-        // API URL - automatically detect
-        const API_URL = window.location.origin;
-        
-        // Local storage keys
-        const STORAGE_KEYS = {
-            TEMPLATES: 'quadd_templates',
-            LAST_TEMPLATE: 'quadd_last_template',
-        };
-        
-        // Document type labels (friendly names)
-        const DOC_TYPES = {
-            basketball: { label: 'Basketball', icon: '🏀' },
-            hockey: { label: 'Hockey', icon: '🏒' },
-            wrestling: { label: 'Wrestling', icon: '🤼' },
-            gymnastics: { label: 'Gymnastics', icon: '🤸' },
-            baseball: { label: 'Baseball', icon: '⚾' },
-            football: { label: 'Football', icon: '🏈' },
-            volleyball: { label: 'Volleyball', icon: '🏐' },
-            soccer: { label: 'Soccer', icon: '⚽' },
-            honor_roll: { label: 'Honor Roll', icon: '📜' },
-            legal_notice: { label: 'Legal Notice', icon: '⚖️' },
-            other: { label: 'Other', icon: '📄' },
-        };
-        
-        // Default templates to get users started
-        const DEFAULT_TEMPLATES = [
-            {
-                id: 'basketball-standard',
-                name: 'Basketball - Standard',
-                docType: 'basketball',
-                description: 'Classic newspaper box score format',
-                sampleOutput: `Pipestone.............................37 29 — 66
-Windom................................23 48 — 71
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📄 Universal Document Learning</h1>
+            <p>Learn from ANY document type - Basketball, Honor Rolls, Legal Notices, Events & More</p>
+        </div>
 
-Pipestone (FG-FT-TP): Danks 0-0-0; Moeller 3-2-8; Kor 4-3-14.
-FG: 22-58 (38%). FT: 17-22 (77%). 3Pt: 5-22 (23%).`,
-                isDefault: true,
-            },
-            {
-                id: 'hockey-standard',
-                name: 'Hockey - Standard',
-                docType: 'hockey',
-                description: 'Game summary with scoring plays',
-                sampleOutput: `Windom Area..........................1 2 1 1 — 5
-Fairmont.............................2 2 0 0 — 4
+        <div class="main-content">
+            <!-- Left Panel: Input -->
+            <div class="card">
+                <h2><span class="icon">📤</span> Input</h2>
 
-FIRST PERIOD: 1. Windom: Lohse (Espenson) 2:45.
-SUMMARY: Shots: Windom 38, Fairmont 32.`,
-                isDefault: true,
-            },
-        ];
-        
-        // ============================================
-        // MAIN APP
-        // ============================================
-        function App() {
-            const [templates, setTemplates] = useState([]);
-            const [selectedTemplate, setSelectedTemplate] = useState(null);
-            const [view, setView] = useState('main');
-            const [inputText, setInputText] = useState('');
-            const [inputFile, setInputFile] = useState(null);
-            const [isProcessing, setIsProcessing] = useState(false);
-            const [result, setResult] = useState(null);
-            const [error, setError] = useState(null);
-            
-            // Load templates on mount
-            useEffect(() => {
-                const saved = localStorage.getItem(STORAGE_KEYS.TEMPLATES);
-                if (saved) {
-                    try {
-                        const parsed = JSON.parse(saved);
-                        setTemplates([...DEFAULT_TEMPLATES, ...parsed]);
-                    } catch (e) {
-                        setTemplates(DEFAULT_TEMPLATES);
-                    }
+                <div class="tab-buttons">
+                    <button class="tab-btn active" data-tab="learn">Learn New</button>
+                    <button class="tab-btn" data-tab="extract">Use Template</button>
+                    <button class="tab-btn" data-tab="manage">Manage Templates</button>
+                </div>
+
+                <!-- Learn Tab -->
+                <div id="learn-tab" class="tab-content active">
+                    <div class="form-group">
+                        <label>Template Name</label>
+                        <input type="text" id="processor-name" placeholder="e.g., basketball_box_score">
+                        <div class="help-text">A descriptive name for this document template</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Document Type</label>
+                        <input type="text" id="document-type" placeholder="e.g., basketball, honor_roll, event_schedule">
+                        <div class="help-text">Any type - basketball, legal, school, events, etc.</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Upload Example Document (PDF)</label>
+                        <div class="file-upload" id="example-upload">
+                            <input type="file" id="example-file" accept=".pdf">
+                            <div>📄 Click to upload PDF</div>
+                            <div class="file-name" style="display: none;"></div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Desired Output Format</label>
+                        <textarea id="desired-output" placeholder="Example:
+WINDOM 72, MARSHALL 68
+
+Leading Scorers:
+  J. Anderson (Windom): 14 points
+  M. Johnson (Marshall): 18 points"></textarea>
+                        <div class="help-text">Show how you want the data formatted</div>
+                    </div>
+
+                    <button class="btn btn-primary" id="learn-btn">
+                        🧠 Learn from Example
+                    </button>
+                </div>
+
+                <!-- Extract Tab -->
+                <div id="extract-tab" class="tab-content">
+                    <div class="form-group">
+                        <label>Select Template</label>
+                        <select id="processor-select">
+                            <option value="">-- Select a template --</option>
+                        </select>
+                        <button class="btn btn-secondary" id="refresh-processors-btn" style="margin-top: 10px;">
+                            🔄 Refresh List
+                        </button>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Upload Document (PDF)</label>
+                        <div class="file-upload" id="extract-upload">
+                            <input type="file" id="extract-file" accept=".pdf">
+                            <div>📄 Click to upload PDF</div>
+                            <div class="file-name" style="display: none;"></div>
+                        </div>
+                        <div class="help-text">For basketball HUDL, scanned documents, etc.</div>
+                    </div>
+
+                    <div style="text-align: center; margin: 20px 0; color: #999; font-weight: 600;">
+                        ── OR ──
+                    </div>
+
+                    <div class="form-group">
+                        <label>Paste Text</label>
+                        <textarea id="extract-text" placeholder="Paste hockey stats, copied text, etc. here...
+Example:
+Player    G  A  PTS
+Smith     2  3   5
+Johnson   1  1   2" rows="8"></textarea>
+                        <div class="help-text">For hockey stats, copied tables, plain text sources</div>
+                    </div>
+
+                    <button class="btn btn-primary" id="extract-btn">
+                        ⚡ Extract Data
+                    </button>
+                </div>
+
+                <!-- Manage Tab -->
+                <div id="manage-tab" class="tab-content">
+                    <div class="form-group">
+                        <button class="btn btn-secondary" id="refresh-manage-btn" style="margin-bottom: 20px;">
+                            🔄 Refresh List
+                        </button>
+                    </div>
+
+                    <!-- Bulk Actions Toolbar -->
+                    <div id="bulk-actions-toolbar" class="bulk-actions hidden">
+                        <span class="selection-count" id="selection-count">0 selected</span>
+                        <button class="btn btn-danger btn-small" id="delete-selected-btn">
+                            🗑️ Delete Selected
+                        </button>
+                        <button class="btn btn-secondary btn-small" id="deselect-all-btn">
+                            Clear Selection
+                        </button>
+                    </div>
+
+                    <div id="processors-list">
+                        <div style="text-align: center; color: #999; padding: 40px;">
+                            Loading templates...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: Output -->
+            <div class="card">
+                <h2><span class="icon">📋</span> Output</h2>
+
+                <div id="status" class="status"></div>
+
+                <div id="output" class="output-area empty">
+                    No output yet. Upload a document to get started.
+                </div>
+
+                <button class="btn btn-secondary" id="copy-btn" style="display: none;">
+                    📋 Copy to Clipboard
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Name Modal -->
+    <div id="edit-name-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit Template Name</h3>
+                <button class="modal-close" onclick="closeModal('edit-name-modal')">&times;</button>
+            </div>
+            <div class="form-group">
+                <label>Template Name</label>
+                <input type="text" id="edit-name-input" placeholder="Enter new name">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('edit-name-modal')">Cancel</button>
+                <button class="btn btn-primary" id="save-name-btn">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Example Modal -->
+    <div id="edit-example-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit Example Output</h3>
+                <button class="modal-close" onclick="closeModal('edit-example-modal')">&times;</button>
+            </div>
+            <div class="form-group">
+                <label>Desired Output Format</label>
+                <textarea id="edit-example-input" rows="15" placeholder="Edit the desired output format..."></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('edit-example-modal')">Cancel</button>
+                <button class="btn btn-primary" id="save-example-btn">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // API Base URL
+        const API_BASE = window.location.origin;
+
+        // Tab switching
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tabName = btn.dataset.tab;
+
+                // Update buttons
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                // Update content
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                document.getElementById(`${tabName}-tab`).classList.add('active');
+            });
+        });
+
+        // File upload handlers
+        function setupFileUpload(uploadId, inputId) {
+            const uploadArea = document.getElementById(uploadId);
+            const fileInput = document.getElementById(inputId);
+            const fileName = uploadArea.querySelector('.file-name');
+
+            uploadArea.addEventListener('click', () => fileInput.click());
+
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    fileName.textContent = `Selected: ${file.name}`;
+                    fileName.style.display = 'block';
+                    uploadArea.classList.add('has-file');
+                }
+            });
+        }
+
+        setupFileUpload('example-upload', 'example-file');
+        setupFileUpload('extract-upload', 'extract-file');
+
+        // Status message helpers
+        function showStatus(message, type = 'info') {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type} show`;
+        }
+
+        function hideStatus() {
+            document.getElementById('status').classList.remove('show');
+        }
+
+        function setOutput(text) {
+            const output = document.getElementById('output');
+            output.textContent = text;
+            output.classList.remove('empty');
+            document.getElementById('copy-btn').style.display = 'block';
+        }
+
+        function clearOutput() {
+            const output = document.getElementById('output');
+            output.textContent = 'No output yet. Upload a document to get started.';
+            output.classList.add('empty');
+            document.getElementById('copy-btn').style.display = 'none';
+        }
+
+        // Initialize: Load processors for dropdown
+        loadProcessorList();
+
+        // Refresh processors button
+        document.getElementById('refresh-processors-btn').addEventListener('click', () => {
+            showStatus('Refreshing processors...', 'info');
+            loadProcessorList();
+            setTimeout(() => hideStatus(), 2000);
+        });
+
+        // Learn button
+        document.getElementById('learn-btn').addEventListener('click', async () => {
+            const name = document.getElementById('processor-name').value.trim();
+            const docType = document.getElementById('document-type').value.trim();
+            const file = document.getElementById('example-file').files[0];
+            const desiredOutput = document.getElementById('desired-output').value.trim();
+
+            // Validation
+            if (!name) {
+                showStatus('Please enter a processor name', 'error');
+                return;
+            }
+            if (!docType) {
+                showStatus('Please enter a document type', 'error');
+                return;
+            }
+            if (!file) {
+                showStatus('Please upload an example document', 'error');
+                return;
+            }
+            if (!desiredOutput) {
+                showStatus('Please provide desired output format', 'error');
+                return;
+            }
+
+            // Create form data
+            const formData = new FormData();
+            formData.append('name', name);
+            formData.append('document_type', docType);
+            formData.append('example_file', file);
+            formData.append('desired_output', desiredOutput);
+
+            // Disable button and show loading
+            const btn = document.getElementById('learn-btn');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Learning...';
+            showStatus('Learning from example... This may take 30-60 seconds.', 'info');
+            clearOutput();
+
+            try {
+                const response = await fetch(`${API_BASE}/api/simple/learn`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Learning failed');
+                }
+
+                // Success!
+                showStatus(`Success! Template "${name}" learned and saved.`, 'success');
+
+                // Show results
+                const output = `LEARNING SUCCESSFUL!
+Template ID: ${data.processor_id}
+Name: ${data.name}
+
+Simple Transformer Approach:
+- Input extracted: ${data.input_length} characters
+- Example output: ${data.output_length} characters
+- Method: LLM-based transformation (no complex column mapping)
+
+This template will transform new documents the same way using AI.`;
+
+                setOutput(output);
+
+                // Reload processors dropdown
+                await loadProcessorList();
+
+                // Clear form
+                document.getElementById('processor-name').value = '';
+                document.getElementById('document-type').value = '';
+                document.getElementById('desired-output').value = '';
+                document.getElementById('example-file').value = '';
+                document.querySelector('#example-upload .file-name').style.display = 'none';
+                document.getElementById('example-upload').classList.remove('has-file');
+
+            } catch (error) {
+                console.error('Learning error:', error);
+                showStatus(`Learning failed: ${error.message}`, 'error');
+                setOutput(`Error: ${error.message}\n\nCheck the console for more details.`);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        });
+
+        // Extract button
+        document.getElementById('extract-btn').addEventListener('click', async () => {
+            const processorId = document.getElementById('processor-select').value;
+            const file = document.getElementById('extract-file').files[0];
+            const text = document.getElementById('extract-text').value.trim();
+
+            // Validation
+            if (!processorId) {
+                showStatus('Please select a template', 'error');
+                return;
+            }
+            if (!file && !text) {
+                showStatus('Please upload a PDF or paste text', 'error');
+                return;
+            }
+            if (file && text) {
+                showStatus('Please use either PDF upload OR text paste, not both', 'error');
+                return;
+            }
+
+            // Create form data
+            const formData = new FormData();
+            formData.append('processor_id', processorId);
+
+            if (file) {
+                formData.append('file', file);
+            } else {
+                formData.append('text', text);
+            }
+
+            // Disable button and show loading
+            const btn = document.getElementById('extract-btn');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Transforming...';
+            showStatus('Transforming document using AI... This may take 10-30 seconds.', 'info');
+            clearOutput();
+
+            try {
+                const response = await fetch(`${API_BASE}/api/simple/transform`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Transformation failed');
+                }
+
+                if (data.status === 'success') {
+                    showStatus(`Transformation successful! (Used ${data.tokens_used} tokens)`, 'success');
+
+                    // Show transformed output
+                    const output = data.output || 'No output generated';
+
+                    setOutput(output);
                 } else {
-                    setTemplates(DEFAULT_TEMPLATES);
+                    throw new Error(data.error_message || 'Transformation failed');
                 }
-                
-                const lastTemplate = localStorage.getItem(STORAGE_KEYS.LAST_TEMPLATE);
-                if (lastTemplate) {
-                    setSelectedTemplate(lastTemplate);
+
+            } catch (error) {
+                console.error('Transformation error:', error);
+                showStatus(`Transformation failed: ${error.message}`, 'error');
+                setOutput(`Error: ${error.message}\n\nCheck the console for more details.`);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        });
+
+        // Copy to clipboard
+        document.getElementById('copy-btn').addEventListener('click', () => {
+            const output = document.getElementById('output').textContent;
+            navigator.clipboard.writeText(output).then(() => {
+                const btn = document.getElementById('copy-btn');
+                const originalText = btn.textContent;
+                btn.textContent = 'Copied!';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                }, 2000);
+            }).catch(err => {
+                showStatus('Failed to copy to clipboard', 'error');
+            });
+        });
+
+        // Manage Processors Functions
+        let currentEditProcessor = null;
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('show');
+            currentEditProcessor = null;
+        }
+
+        // Load processors for extract tab dropdown
+        async function loadProcessorList() {
+            try {
+                const response = await fetch(`${API_BASE}/api/processors`);
+                const data = await response.json();
+
+                const select = document.getElementById('processor-select');
+                select.innerHTML = '<option value="">-- Select a processor --</option>';
+
+                data.processors.forEach(p => {
+                    const option = document.createElement('option');
+                    option.value = p.id;
+                    option.textContent = `${p.name} (${p.document_type})`;
+                    select.appendChild(option);
+                });
+
+                console.log(`Loaded ${data.processors.length} templates for dropdown`);
+            } catch (error) {
+                console.error('Failed to load processor list:', error);
+            }
+        }
+
+        // Load processors for manage tab
+        async function loadManageProcessors() {
+            const listEl = document.getElementById('processors-list');
+            listEl.innerHTML = '<div style="text-align: center; color: #999; padding: 40px;">Loading processors...</div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/simple/processors`);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Failed to load processors');
                 }
-            }, []);
-            
-            const saveTemplates = (newTemplates) => {
-                const userTemplates = newTemplates.filter(t => !t.isDefault);
-                localStorage.setItem(STORAGE_KEYS.TEMPLATES, JSON.stringify(userTemplates));
-                setTemplates([...DEFAULT_TEMPLATES, ...userTemplates]);
-            };
-            
-            const handleSelectTemplate = (templateId) => {
-                setSelectedTemplate(templateId);
-                localStorage.setItem(STORAGE_KEYS.LAST_TEMPLATE, templateId);
-                setError(null);
-            };
-            
-            const handleFileInput = (file) => {
-                setInputFile(file);
-                setInputText('');
-                setError(null);
-            };
-            
-            const handleTextInput = (text) => {
-                setInputText(text);
-                setInputFile(null);
-                setError(null);
-            };
-            
-            const handleProcess = async () => {
-                if (!inputFile && !inputText.trim()) {
-                    setError('Please upload a file or paste your stats first.');
+
+                const processors = data.processors || [];
+
+                if (processors.length === 0) {
+                    listEl.innerHTML = '<div style="text-align: center; color: #999; padding: 40px;">No templates found. Create one in the "Learn New" tab.</div>';
                     return;
                 }
-                
-                setIsProcessing(true);
-                setError(null);
-                
-                try {
-                    const formData = new FormData();
-                    
-                    if (inputFile) {
-                        formData.append('file', inputFile);
-                    } else {
-                        const blob = new Blob([inputText], { type: 'text/plain' });
-                        formData.append('file', blob, 'pasted_content.txt');
-                    }
-                    
-                    const template = templates.find(t => t.id === selectedTemplate);
-                    if (template) {
-                        formData.append('document_type', template.docType);
-                    }
-                    
-                    const response = await fetch(`${API_URL}/extract`, {
-                        method: 'POST',
-                        body: formData,
-                    });
-                    
-                    if (!response.ok) {
-                        const err = await response.json();
-                        throw new Error(err.detail || 'Processing failed');
-                    }
-                    
-                    const data = await response.json();
-                    
-                    if (data.success) {
-                        setResult(data);
-                        setView('result');
-                    } else {
-                        throw new Error(data.errors?.[0] || 'Could not read this document. Please check the format.');
-                    }
-                } catch (err) {
-                    setError(err.message || 'Something went wrong. Please try again.');
-                } finally {
-                    setIsProcessing(false);
-                }
-            };
-            
-            const handleCreateTemplate = (newTemplate) => {
-                const templateWithId = {
-                    ...newTemplate,
-                    id: `custom-${Date.now()}`,
-                    isDefault: false,
-                };
-                const userTemplates = templates.filter(t => !t.isDefault);
-                saveTemplates([...userTemplates, templateWithId]);
-                setSelectedTemplate(templateWithId.id);
-                setView('main');
-            };
-            
-            const handleDeleteTemplate = (templateId) => {
-                const newTemplates = templates.filter(t => t.id !== templateId);
-                saveTemplates(newTemplates.filter(t => !t.isDefault));
-                if (selectedTemplate === templateId) {
-                    setSelectedTemplate(null);
-                }
-            };
-            
-            const handleReset = () => {
-                setInputFile(null);
-                setInputText('');
-                setResult(null);
-                setError(null);
-                setView('main');
-            };
-            
-            return (
-                <div className="min-h-screen">
-                    {/* Header */}
-                    <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
-                        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
-                            <div 
-                                className="flex items-center gap-3 cursor-pointer" 
-                                onClick={() => { setView('main'); setResult(null); }}
-                            >
-                                <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-600/20">
-                                    <span className="text-white text-xl">📰</span>
-                                </div>
-                                <div>
-                                    <h1 className="font-bold text-slate-800 text-lg leading-tight">Stats Formatter</h1>
-                                    <p className="text-slate-500 text-xs">Box scores → Newspaper text</p>
-                                </div>
-                            </div>
-                            
-                            {view !== 'main' && (
-                                <button
-                                    onClick={handleReset}
-                                    className="text-slate-600 hover:text-slate-800 text-sm font-medium flex items-center gap-1 px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors"
-                                >
-                                    ← Back
-                                </button>
-                            )}
-                        </div>
-                    </header>
-                    
-                    {/* Main Content */}
-                    <main className="max-w-5xl mx-auto px-4 py-8">
-                        {view === 'main' && (
-                            <MainView
-                                templates={templates}
-                                selectedTemplate={selectedTemplate}
-                                onSelectTemplate={handleSelectTemplate}
-                                onCreateNew={() => setView('create')}
-                                onDeleteTemplate={handleDeleteTemplate}
-                                inputFile={inputFile}
-                                inputText={inputText}
-                                onFileInput={handleFileInput}
-                                onTextInput={handleTextInput}
-                                onProcess={handleProcess}
-                                isProcessing={isProcessing}
-                                error={error}
-                            />
-                        )}
-                        
-                        {view === 'create' && (
-                            <CreateTemplateView
-                                onSave={handleCreateTemplate}
-                                onCancel={() => setView('main')}
-                            />
-                        )}
-                        
-                        {view === 'result' && result && (
-                            <ResultView
-                                result={result}
-                                template={templates.find(t => t.id === selectedTemplate)}
-                                onFormatAnother={handleReset}
-                            />
-                        )}
-                    </main>
-                    
-                    {/* Footer */}
-                    <footer className="max-w-5xl mx-auto px-4 py-8 text-center text-sm text-slate-400">
-                        Supports HUDL, GameChanger, and most common stats formats
-                    </footer>
-                </div>
-            );
-        }
-        
-        // ============================================
-        // MAIN VIEW
-        // ============================================
-        function MainView({
-            templates,
-            selectedTemplate,
-            onSelectTemplate,
-            onCreateNew,
-            onDeleteTemplate,
-            inputFile,
-            inputText,
-            onFileInput,
-            onTextInput,
-            onProcess,
-            isProcessing,
-            error,
-        }) {
-            const hasInput = inputFile || inputText.trim();
-            const selectedTemplateObj = templates.find(t => t.id === selectedTemplate);
-            
-            return (
-                <div className="space-y-8 fade-in">
-                    {/* Step 1: Choose Format */}
-                    <section className="bg-white rounded-2xl border border-slate-200 p-6">
-                        <div className="flex items-center justify-between mb-5">
-                            <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">1</div>
-                                <div>
-                                    <h2 className="text-lg font-semibold text-slate-800">Choose your format style</h2>
-                                    <p className="text-slate-500 text-sm">This controls how your output looks</p>
-                                </div>
-                            </div>
-                            <button
-                                onClick={onCreateNew}
-                                className="px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-xl text-sm font-medium flex items-center gap-1.5 transition-colors"
-                            >
-                                <span className="text-lg leading-none">+</span> Create New
-                            </button>
-                        </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {templates.map(template => (
-                                <TemplateCard
-                                    key={template.id}
-                                    template={template}
-                                    isSelected={selectedTemplate === template.id}
-                                    onSelect={() => onSelectTemplate(template.id)}
-                                    onDelete={template.isDefault ? null : () => onDeleteTemplate(template.id)}
-                                />
-                            ))}
-                        </div>
-                        
-                        {selectedTemplateObj && (
-                            <div className="mt-4 p-3 bg-blue-50 rounded-xl flex items-center gap-2 text-sm">
-                                <span className="text-blue-500">✓</span>
-                                <span className="text-blue-700">Using: <strong>{selectedTemplateObj.name}</strong></span>
-                            </div>
-                        )}
-                    </section>
-                    
-                    {/* Step 2: Upload Stats */}
-                    <section className="bg-white rounded-2xl border border-slate-200 p-6">
-                        <div className="flex items-center gap-3 mb-5">
-                            <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">2</div>
-                            <div>
-                                <h2 className="text-lg font-semibold text-slate-800">Add your stats</h2>
-                                <p className="text-slate-500 text-sm">Upload a file or paste from website</p>
-                            </div>
-                        </div>
-                        
-                        <FileDropZone
-                            file={inputFile}
-                            onFileSelect={onFileInput}
-                        />
-                        
-                        <div className="flex items-center gap-4 my-5">
-                            <div className="flex-1 h-px bg-slate-200"></div>
-                            <span className="text-slate-400 text-sm font-medium px-2">or paste text</span>
-                            <div className="flex-1 h-px bg-slate-200"></div>
-                        </div>
-                        
-                        <textarea
-                            value={inputText}
-                            onChange={(e) => onTextInput(e.target.value)}
-                            placeholder="Paste your stats from a website here..."
-                            className="w-full p-4 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none text-sm transition-shadow"
-                            rows={5}
-                        />
-                        
-                        {hasInput && (
-                            <div className="mt-3 flex items-center gap-2 text-sm text-green-600">
-                                <span>✓</span>
-                                <span>{inputFile ? `File ready: ${inputFile.name}` : 'Text ready to process'}</span>
-                            </div>
-                        )}
-                    </section>
-                    
-                    {/* Error Message */}
-                    {error && (
-                        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3 fade-in">
-                            <span className="text-red-500 text-xl flex-shrink-0">⚠️</span>
-                            <div>
-                                <p className="text-red-800 font-medium">Oops! Something's not right</p>
-                                <p className="text-red-600 text-sm mt-1">{error}</p>
-                            </div>
-                        </div>
-                    )}
-                    
-                    {/* Process Button */}
-                    <div className="flex flex-col items-center gap-3">
-                        <button
-                            onClick={onProcess}
-                            disabled={isProcessing || !hasInput}
-                            className={`px-10 py-4 rounded-2xl font-semibold text-lg transition-all
-                                ${isProcessing || !hasInput
-                                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                                    : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-600/30 hover:shadow-xl hover:shadow-blue-600/40 hover:-translate-y-0.5 active:translate-y-0'
-                                }`}
-                        >
-                            {isProcessing ? (
-                                <span className="flex items-center gap-3">
-                                    <LoadingDots />
-                                    Processing...
-                                </span>
-                            ) : (
-                                'Format My Stats →'
-                            )}
-                        </button>
-                        
-                        {!hasInput && (
-                            <p className="text-slate-400 text-sm">
-                                Add a file or paste text above to continue
-                            </p>
-                        )}
-                    </div>
-                </div>
-            );
-        }
-        
-        // ============================================
-        // TEMPLATE CARD
-        // ============================================
-        function TemplateCard({ template, isSelected, onSelect, onDelete }) {
-            const docType = DOC_TYPES[template.docType] || DOC_TYPES.other;
-            
-            return (
-                <div
-                    onClick={onSelect}
-                    className={`template-card relative bg-white rounded-xl border-2 p-4 cursor-pointer
-                        ${isSelected 
-                            ? 'border-blue-500 ring-4 ring-blue-50' 
-                            : 'border-slate-200 hover:border-slate-300'
-                        }`}
-                >
-                    {isSelected && (
-                        <div className="absolute -top-2 -right-2 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center shadow-lg">
-                            <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
-                        </div>
-                    )}
-                    
-                    {onDelete && (
-                        <button
-                            onClick={(e) => { e.stopPropagation(); onDelete(); }}
-                            className="absolute top-2 right-2 w-6 h-6 rounded-full bg-slate-100 hover:bg-red-100 flex items-center justify-center text-slate-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
-                            style={{ opacity: 1 }}
-                        >
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    )}
-                    
-                    <div className="flex items-start gap-3">
-                        <div className="text-2xl">{docType.icon}</div>
-                        <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-slate-800 truncate pr-6">{template.name}</h3>
-                            <p className="text-slate-500 text-sm mt-0.5">{template.description || docType.label}</p>
-                        </div>
-                    </div>
-                    
-                    {template.sampleOutput && (
-                        <div className="mt-3 p-2.5 bg-slate-50 rounded-lg border border-slate-100">
-                            <pre className="text-xs text-slate-500 whitespace-pre-wrap line-clamp-3 font-mono leading-relaxed">
-                                {template.sampleOutput.slice(0, 120)}...
-                            </pre>
-                        </div>
-                    )}
-                    
-                    {template.isDefault && (
-                        <div className="mt-3 inline-block px-2 py-0.5 bg-slate-100 rounded text-xs text-slate-500">
-                            Built-in
-                        </div>
-                    )}
-                </div>
-            );
-        }
-        
-        // ============================================
-        // FILE DROP ZONE
-        // ============================================
-        function FileDropZone({ file, onFileSelect }) {
-            const [isDragOver, setIsDragOver] = useState(false);
-            const inputRef = useRef(null);
-            
-            const handleDrag = useCallback((e) => {
-                e.preventDefault();
-                e.stopPropagation();
-            }, []);
-            
-            const handleDragIn = useCallback((e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setIsDragOver(true);
-            }, []);
-            
-            const handleDragOut = useCallback((e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setIsDragOver(false);
-            }, []);
-            
-            const handleDrop = useCallback((e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setIsDragOver(false);
-                
-                const files = e.dataTransfer?.files;
-                if (files?.[0]) {
-                    onFileSelect(files[0]);
-                }
-            }, [onFileSelect]);
-            
-            return (
-                <div
-                    onDragEnter={handleDragIn}
-                    onDragLeave={handleDragOut}
-                    onDragOver={handleDrag}
-                    onDrop={handleDrop}
-                    onClick={() => inputRef.current?.click()}
-                    className={`drop-zone border-2 border-dashed rounded-xl p-8 text-center cursor-pointer
-                        ${isDragOver ? 'active border-blue-400 bg-blue-50' : 'border-slate-300 hover:border-slate-400 hover:bg-slate-50'}
-                        ${file ? 'bg-green-50 border-green-400 hover:bg-green-50' : ''}`}
-                >
-                    <input
-                        ref={inputRef}
-                        type="file"
-                        onChange={(e) => e.target.files?.[0] && onFileSelect(e.target.files[0])}
-                        accept=".pdf,.txt,.csv,.html"
-                        className="hidden"
-                    />
-                    
-                    {file ? (
-                        <div className="fade-in">
-                            <div className="text-4xl mb-3">📄</div>
-                            <p className="font-semibold text-green-700">{file.name}</p>
-                            <p className="text-sm text-green-600 mt-1">
-                                {(file.size / 1024).toFixed(1)} KB • Click to change file
-                            </p>
-                        </div>
-                    ) : (
-                        <div>
-                            <div className="text-4xl mb-3">📁</div>
-                            <p className="font-semibold text-slate-700">Drop your file here</p>
-                            <p className="text-sm text-slate-500 mt-1">
-                                or click to browse • PDF, TXT
-                            </p>
-                        </div>
-                    )}
-                </div>
-            );
-        }
-        
-        // ============================================
-        // CREATE TEMPLATE VIEW
-        // ============================================
-        function CreateTemplateView({ onSave, onCancel }) {
-            const [name, setName] = useState('');
-            const [docType, setDocType] = useState('basketball');
-            const [description, setDescription] = useState('');
-            const [sampleOutput, setSampleOutput] = useState('');
-            
-            const handleSave = () => {
-                if (!name.trim()) return;
-                onSave({
-                    name: name.trim(),
-                    docType,
-                    description: description.trim(),
-                    sampleOutput: sampleOutput.trim(),
-                });
-            };
-            
-            const docTypes = Object.entries(DOC_TYPES).filter(([key]) => !['other'].includes(key));
-            
-            return (
-                <div className="max-w-2xl mx-auto fade-in">
-                    <div className="bg-white rounded-2xl border border-slate-200 p-8">
-                        <h2 className="text-2xl font-bold text-slate-800 mb-2">
-                            Create New Format Style
-                        </h2>
-                        <p className="text-slate-500 mb-8">
-                            Save a format style to reuse for future stats
-                        </p>
-                        
-                        {/* Template Name */}
-                        <div className="mb-6">
-                            <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                Name <span className="text-red-400">*</span>
-                            </label>
-                            <input
-                                type="text"
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                placeholder="e.g., Windom-Boys Basketball"
-                                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
-                                autoFocus
-                            />
-                            <p className="mt-2 text-sm text-slate-500">
-                                💡 Tip: Include your paper name and sport, like "Tribune-Hockey"
-                            </p>
-                        </div>
-                        
-                        {/* Document Type */}
-                        <div className="mb-6">
-                            <label className="block text-sm font-semibold text-slate-700 mb-3">
-                                What type of content?
-                            </label>
-                            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
-                                {docTypes.map(([key, value]) => (
-                                    <button
-                                        key={key}
-                                        onClick={() => setDocType(key)}
-                                        className={`p-3 rounded-xl border-2 text-center transition-all
-                                            ${docType === key 
-                                                ? 'border-blue-500 bg-blue-50 shadow-sm' 
-                                                : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                                            }`}
-                                    >
-                                        <div className="text-xl mb-1">{value.icon}</div>
-                                        <div className="text-xs font-medium text-slate-700">{value.label}</div>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                        
-                        {/* Description */}
-                        <div className="mb-6">
-                            <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                Description <span className="text-slate-400 font-normal">(optional)</span>
-                            </label>
-                            <input
-                                type="text"
-                                value={description}
-                                onChange={(e) => setDescription(e.target.value)}
-                                placeholder="e.g., Our standard varsity game format"
-                                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
-                            />
-                        </div>
-                        
-                        {/* Sample Output */}
-                        <div className="mb-8">
-                            <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                Example output <span className="text-slate-400 font-normal">(optional)</span>
-                            </label>
-                            <textarea
-                                value={sampleOutput}
-                                onChange={(e) => setSampleOutput(e.target.value)}
-                                placeholder={`Paste an example of how your newspaper formats this, like:
 
-Pipestone.......................37 29 — 66
-Windom..........................23 48 — 71
-Pipestone (FG-FT-TP): Danks 0-0-0...`}
-                                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm transition-shadow"
-                                rows={6}
-                            />
-                            <p className="mt-2 text-sm text-slate-500">
-                                This helps you remember what format this style produces
-                            </p>
+                // Render processors with checkboxes and type badges
+                listEl.innerHTML = processors.map(proc => {
+                    // Determine badge type
+                    const isNew = proc.document_type === 'simple_transform_vision_ocr';
+                    const badgeClass = isNew ? 'badge-new' : 'badge-old';
+                    const badgeText = isNew ? 'NEW' : 'OLD';
+
+                    return `
+                    <div class="processor-card" data-id="${proc.id}">
+                        <div class="processor-header">
+                            <input type="checkbox" class="processor-checkbox" data-id="${proc.id}" onchange="updateSelectionCount()">
+                            <div class="processor-name" onclick="editProcessorName('${proc.id}', '${escapeHtml(proc.name)}')">${escapeHtml(proc.name)}</div>
+                            <span class="processor-badge ${badgeClass}">${badgeText}</span>
                         </div>
-                        
-                        {/* Buttons */}
-                        <div className="flex gap-3">
-                            <button
-                                onClick={onCancel}
-                                className="flex-1 px-6 py-3 border border-slate-300 rounded-xl text-slate-700 font-medium hover:bg-slate-50 transition-colors"
-                            >
-                                Cancel
+                        <div class="processor-meta">
+                            Type: ${proc.document_type} | Created: ${formatDate(proc.created_at)}
+                        </div>
+                        <div class="processor-actions">
+                            <button class="btn btn-secondary btn-small" onclick="editProcessorExample('${proc.id}')">
+                                ✏️ Edit Example
                             </button>
-                            <button
-                                onClick={handleSave}
-                                disabled={!name.trim()}
-                                className={`flex-1 px-6 py-3 rounded-xl font-medium transition-all
-                                    ${name.trim()
-                                        ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-600/20'
-                                        : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                                    }`}
-                            >
-                                Save Format Style
+                            <button class="btn btn-danger btn-small" onclick="deleteProcessor('${proc.id}', '${escapeHtml(proc.name)}')">
+                                🗑️ Delete
                             </button>
                         </div>
                     </div>
-                </div>
-            );
+                `;
+                }).join('');
+
+                // Reset selection count
+                updateSelectionCount();
+
+            } catch (error) {
+                console.error('Failed to load processors:', error);
+                listEl.innerHTML = `<div style="text-align: center; color: #f44336; padding: 40px;">Error: ${error.message}</div>`;
+            }
         }
-        
-        // ============================================
-        // RESULT VIEW
-        // ============================================
-        function ResultView({ result, template, onFormatAnother }) {
-            const [copied, setCopied] = useState(false);
-            
-            const handleCopy = async () => {
-                if (result?.newspaper_text) {
-                    await navigator.clipboard.writeText(result.newspaper_text);
-                    setCopied(true);
-                    setTimeout(() => setCopied(false), 2500);
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr || dateStr === 'Unknown') return 'Unknown';
+            try {
+                return new Date(dateStr).toLocaleDateString();
+            } catch {
+                return dateStr;
+            }
+        }
+
+        // Update selection count and toolbar visibility
+        function updateSelectionCount() {
+            const checkboxes = document.querySelectorAll('.processor-checkbox');
+            const selectedCheckboxes = Array.from(checkboxes).filter(cb => cb.checked);
+            const count = selectedCheckboxes.length;
+
+            // Update count display
+            const countEl = document.getElementById('selection-count');
+            countEl.textContent = `${count} selected`;
+
+            // Show/hide toolbar
+            const toolbar = document.getElementById('bulk-actions-toolbar');
+            if (count > 0) {
+                toolbar.classList.remove('hidden');
+            } else {
+                toolbar.classList.add('hidden');
+            }
+        }
+
+        // Delete selected processors
+        async function deleteSelectedProcessors() {
+            const checkboxes = document.querySelectorAll('.processor-checkbox:checked');
+            const selectedIds = Array.from(checkboxes).map(cb => cb.dataset.id);
+
+            if (selectedIds.length === 0) {
+                showStatus('No templates selected', 'error');
+                return;
+            }
+
+            const confirmMsg = `Are you sure you want to delete ${selectedIds.length} template(s)?\n\nThis action cannot be undone.`;
+            if (!confirm(confirmMsg)) {
+                return;
+            }
+
+            try {
+                showStatus(`Deleting ${selectedIds.length} template(s)...`, 'info');
+
+                const response = await fetch(`${API_BASE}/api/simple/processors/bulk-delete`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(selectedIds)
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Failed to delete processors');
                 }
-            };
-            
-            const docType = DOC_TYPES[result?.document_type] || DOC_TYPES.other;
-            
-            return (
-                <div className="max-w-3xl mx-auto fade-in">
-                    {/* Success Header */}
-                    <div className="text-center mb-8 success-bounce">
-                        <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4 shadow-lg shadow-green-100">
-                            <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
-                        </div>
-                        <h2 className="text-2xl font-bold text-slate-800">Your stats are ready!</h2>
-                        <p className="text-slate-500 mt-2">
-                            {docType.icon} Detected: {docType.label}
-                            {result?.confidence && ` • ${Math.round(result.confidence * 100)}% confidence`}
-                        </p>
-                    </div>
-                    
-                    {/* Output Box */}
-                    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-lg">
-                        <div className="bg-slate-50 px-5 py-3 border-b border-slate-200 flex items-center justify-between">
-                            <span className="text-sm font-semibold text-slate-600">📄 Formatted Output</span>
-                            <button
-                                onClick={handleCopy}
-                                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all
-                                    ${copied 
-                                        ? 'bg-green-500 text-white shadow-lg shadow-green-500/30' 
-                                        : 'bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-600/20'
-                                    }`}
-                            >
-                                {copied ? '✓ Copied!' : '📋 Copy'}
-                            </button>
-                        </div>
-                        
-                        <div className="p-6 bg-white">
-                            <pre className="whitespace-pre-wrap font-mono text-sm text-slate-800 leading-relaxed">
-                                {result?.newspaper_text || 'No output generated'}
-                            </pre>
-                        </div>
-                    </div>
-                    
-                    {/* Warnings */}
-                    {result?.warnings?.length > 0 && (
-                        <div className="mt-4 bg-amber-50 border border-amber-200 rounded-xl p-4">
-                            <p className="font-semibold text-amber-800 text-sm flex items-center gap-2">
-                                <span>💡</span> Notes
-                            </p>
-                            <ul className="mt-2 text-sm text-amber-700 space-y-1">
-                                {result.warnings.map((w, i) => <li key={i}>• {w}</li>)}
-                            </ul>
-                        </div>
-                    )}
-                    
-                    {/* Actions */}
-                    <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
-                        <button
-                            onClick={handleCopy}
-                            className="px-8 py-3.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/30 hover:shadow-xl hover:shadow-blue-600/40"
-                        >
-                            📋 Copy to Clipboard
-                        </button>
-                        <button
-                            onClick={onFormatAnother}
-                            className="px-8 py-3.5 bg-white border-2 border-slate-200 text-slate-700 rounded-xl font-semibold hover:bg-slate-50 hover:border-slate-300 transition-colors"
-                        >
-                            Format Another
-                        </button>
-                    </div>
-                    
-                    {/* Pro tip */}
-                    <div className="mt-8 text-center">
-                        <p className="text-sm text-slate-400">
-                            💡 Pro tip: Press <kbd className="px-1.5 py-0.5 bg-slate-100 rounded text-xs font-mono">Ctrl+V</kbd> to paste directly into your publishing software
-                        </p>
-                    </div>
-                </div>
-            );
+
+                const deletedCount = data.deleted_count || 0;
+                const failedCount = data.failed_count || 0;
+
+                let message = `Successfully deleted ${deletedCount} template(s)`;
+                if (failedCount > 0) {
+                    message += ` (${failedCount} failed)`;
+                }
+
+                showStatus(message, deletedCount > 0 ? 'success' : 'error');
+
+                // Refresh both lists
+                await loadManageProcessors();
+                await loadProcessorList();
+
+            } catch (error) {
+                console.error('Failed to delete processors:', error);
+                showStatus(`Failed to delete templates: ${error.message}`, 'error');
+            }
         }
-        
-        // ============================================
-        // LOADING DOTS
-        // ============================================
-        function LoadingDots() {
-            return (
-                <span className="inline-flex gap-1">
-                    <span className="loading-dot w-2 h-2 bg-current rounded-full"></span>
-                    <span className="loading-dot w-2 h-2 bg-current rounded-full"></span>
-                    <span className="loading-dot w-2 h-2 bg-current rounded-full"></span>
-                </span>
-            );
+
+        // Clear all selections
+        function clearSelection() {
+            const checkboxes = document.querySelectorAll('.processor-checkbox');
+            checkboxes.forEach(cb => cb.checked = false);
+            updateSelectionCount();
         }
-        
-        // ============================================
-        // RENDER
-        // ============================================
-        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+
+        async function editProcessorName(processorId, currentName) {
+            currentEditProcessor = processorId;
+            document.getElementById('edit-name-input').value = currentName;
+            document.getElementById('edit-name-modal').classList.add('show');
+        }
+
+        async function editProcessorExample(processorId) {
+            currentEditProcessor = processorId;
+
+            try {
+                // Get current processor data
+                const response = await fetch(`${API_BASE}/api/processors/${processorId}`);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Failed to load processor');
+                }
+
+                // Extract example output from template
+                let exampleOutput = '';
+
+                try {
+                    const templateData = JSON.parse(data.template);
+                    exampleOutput = templateData.output_text || '';
+                } catch (e) {
+                    // Old format - try to extract from text
+                    if (data.template && data.template.includes('EXAMPLE_OUTPUT:')) {
+                        const parts = data.template.split('EXAMPLE_OUTPUT:');
+                        if (parts.length > 1) {
+                            exampleOutput = parts[1].trim();
+                        }
+                    }
+                }
+
+                document.getElementById('edit-example-input').value = exampleOutput;
+                document.getElementById('edit-example-modal').classList.add('show');
+
+            } catch (error) {
+                console.error('Failed to load processor example:', error);
+                showStatus(`Failed to load example: ${error.message}`, 'error');
+            }
+        }
+
+        async function deleteProcessor(processorId, processorName) {
+            if (!confirm(`Are you sure you want to delete "${processorName}"?\n\nThis action cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/simple/processors/${processorId}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Failed to delete processor');
+                }
+
+                showStatus(`Template "${processorName}" deleted successfully!`, 'success');
+                await loadManageProcessors();
+                await loadProcessorList(); // Refresh the dropdown in extract tab
+
+            } catch (error) {
+                console.error('Failed to delete processor:', error);
+                showStatus(`Failed to delete template: ${error.message}`, 'error');
+            }
+        }
+
+        // Save name button
+        document.getElementById('save-name-btn').addEventListener('click', async () => {
+            if (!currentEditProcessor) return;
+
+            const newName = document.getElementById('edit-name-input').value.trim();
+            if (!newName) {
+                alert('Name cannot be empty');
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('name', newName);
+
+                const response = await fetch(`${API_BASE}/api/simple/processors/${currentEditProcessor}`, {
+                    method: 'PUT',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Failed to update name');
+                }
+
+                showStatus('Template name updated successfully!', 'success');
+                closeModal('edit-name-modal');
+                await loadManageProcessors();
+                await loadProcessorList(); // Refresh the dropdown
+
+            } catch (error) {
+                console.error('Failed to update name:', error);
+                showStatus(`Failed to update name: ${error.message}`, 'error');
+            }
+        });
+
+        // Save example button
+        document.getElementById('save-example-btn').addEventListener('click', async () => {
+            if (!currentEditProcessor) return;
+
+            const newExample = document.getElementById('edit-example-input').value.trim();
+            if (!newExample) {
+                alert('Example output cannot be empty');
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('desired_output', newExample);
+
+                const response = await fetch(`${API_BASE}/api/simple/processors/${currentEditProcessor}`, {
+                    method: 'PUT',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Failed to update example');
+                }
+
+                showStatus('Example output updated successfully!', 'success');
+                closeModal('edit-example-modal');
+                await loadManageProcessors();
+
+            } catch (error) {
+                console.error('Failed to update example:', error);
+                showStatus(`Failed to update example: ${error.message}`, 'error');
+            }
+        });
+
+        // Refresh manage button
+        document.getElementById('refresh-manage-btn').addEventListener('click', loadManageProcessors);
+
+        // Bulk actions buttons
+        document.getElementById('delete-selected-btn').addEventListener('click', deleteSelectedProcessors);
+        document.getElementById('deselect-all-btn').addEventListener('click', clearSelection);
+
+        // Load processors when manage tab is shown
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            const originalClick = btn.onclick || function() {};
+            btn.addEventListener('click', () => {
+                if (btn.dataset.tab === 'manage') {
+                    loadManageProcessors();
+                }
+            });
+        });
+
+        // Close modals when clicking outside
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    closeModal(modal.id);
+                }
+            });
+        });
     </script>
 </body>
 </html>

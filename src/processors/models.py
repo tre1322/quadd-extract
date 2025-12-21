@@ -150,7 +150,9 @@ class Processor:
     validations: List[Validation] = field(default_factory=list)
 
     # Rendering
-    template_id: str = "generic"  # Jinja2 template to use for output
+    template_id: str = "generic"  # Legacy: reference to built-in template (deprecated)
+    template: Optional[str] = None  # Learned Jinja2 template (preferred over template_id)
+    field_column_mapping: Optional[dict] = None  # Learned field-to-column mapping (e.g., {"player_name": "Name", "points": "Pts"})
 
     # Metadata
     created_at: datetime = field(default_factory=datetime.utcnow)
