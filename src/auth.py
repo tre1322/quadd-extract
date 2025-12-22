@@ -4,15 +4,26 @@ Authentication utilities for JWT token handling and password verification.
 import os
 import jwt
 import bcrypt
+import logging
 from datetime import datetime, timedelta
 from typing import Optional
 from fastapi import HTTPException, Header, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
+logger = logging.getLogger(__name__)
+
 # JWT Configuration
 JWT_SECRET = os.getenv('JWT_SECRET', 'dev-secret-change-in-production-please')
 JWT_ALGORITHM = 'HS256'
 JWT_EXPIRATION_HOURS = 24
+
+# Warn if using default JWT secret
+if JWT_SECRET == 'dev-secret-change-in-production-please':
+    logger.warning("=" * 80)
+    logger.warning("WARNING: Using default JWT_SECRET!")
+    logger.warning("This is INSECURE for production. Set JWT_SECRET environment variable.")
+    logger.warning("Generate a secure secret with: python -c 'import secrets; print(secrets.token_urlsafe(32))'")
+    logger.warning("=" * 80)
 
 # Security scheme for Swagger UI
 security = HTTPBearer()

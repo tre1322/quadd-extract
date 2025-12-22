@@ -112,9 +112,12 @@ app = FastAPI(
 )
 
 # CORS middleware - allow all origins for development
+# CORS Configuration
+# For production, set ALLOWED_ORIGINS environment variable to your Railway domain
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "*").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, set specific origins
+    allow_origins=allowed_origins if allowed_origins != ["*"] else ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

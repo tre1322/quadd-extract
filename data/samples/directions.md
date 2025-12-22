@@ -1,53 +1,80 @@
-The /help route returns "Not Found". Create the help page:
+Prepare the project for secure Railway deployment using Nixpacks. Review and create/update all necessary files.
+1.	CHECK AND UPDATE railway.json:
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "nixpacks"
+  },
+  "deploy": {
+    "startCommand": "uvicorn src.api.main:app --host 0.0.0.0 --port ${PORT:-8000}",
+    "restartPolicyType": "on_failure",
+    "restartPolicyMaxRetries": 3
+  }
+}
+```
 
-Create frontend/help.html with a simple user guide that matches the app's purple/blue theme
-Add a route in src/api/main.py to serve the help page:
-@app.get("/help", response_class=HTMLResponse)
-async def help_page():
-    return FileResponse("frontend/help.html")
+2. CHECK AND UPDATE Procfile:
+```
+web: uvicorn src.api.main:app --host 0.0.0.0 --port ${PORT:-8000}
+CREATE nixpacks.toml for build configuration:
+[phases.setup]
+nixPkgs = ["python311", "tesseract", "poppler_utils"]
 
-    The help page content should include:
+[phases.install]
+cmds = ["pip install -r requirements.txt"]
 
-SECTION 1: Getting Started
+[start]
+cmd = "uvicorn src.api.main:app --host 0.0.0.0 --port ${PORT:-8000}"
+```
 
-How to log in
-What the 3 tabs do (Learn New, Use Template, Manage)
+4. CHECK requirements.txt includes ALL dependencies:
+- fastapi
+- uvicorn
+- python-multipart
+- anthropic
+- pyjwt
+- bcrypt
+- pdf2image
+- pytesseract
+- pillow
+- python-docx
+- openpyxl
+- pandas
+- aiofiles
+- jinja2
 
-SECTION 2: Creating a Template
+5. UPDATE src/api/main.py for production security:
+- Ensure CORS is configured properly for production (allow your Railway domain)
+- Ensure JWT_SECRET is loaded from environment variable (not hardcoded)
+- Ensure ANTHROPIC_API_KEY is loaded from environment variable
+- Ensure database path works with Railway volume (/app/data/ if volume mounted)
 
-Step 1: Go to Learn New tab
-Step 2: Give it a name
-Step 3: Upload a PDF OR paste text
-Step 4: Paste how you want the output to look
-Step 5: Click Learn from Example
+6. CREATE .env.example showing required environment variables:
+```
+JWT_SECRET=your-secure-random-string-here
+ANTHROPIC_API_KEY=sk-ant-your-key-here
+PORT=8000
+DATABASE_PATH=/app/data/quadd_extract.db
+```
 
-SECTION 3: Using a Template
+7. UPDATE database path in code:
+- Check src/db/database.py
+- Database should use environment variable DATABASE_PATH or default to /app/data/quadd_extract.db for Railway
+- Ensure the data directory is created if it doesn't exist
 
-Step 1: Go to Use Template tab
-Step 2: Select your template
-Step 3: Upload PDF or paste text
-Step 4: Click Extract Data
-Step 5: Copy the output
+8. CHECK .gitignore excludes:
+- .env (never commit secrets)
+- *.db (database files)
+- __pycache__/
+- venv/
 
-SECTION 4: Managing Templates
+9. SECURITY CHECK:
+- No hardcoded passwords anywhere in code
+- No API keys in code
+- No default credentials visible in frontend
+- JWT secret loaded from environment only
 
-How to rename, edit, or delete
-
-SECTION 5: Tips
-
-Better examples = better output
-One template per document type
-
-SECTION 6: Problems
-
-Can't see templates? Check you're logged in
-Wrong output? Edit your example
-
-Design:
-
-Large fonts (16px+)
-Short paragraphs
-Numbered steps
-Emoji icons for visual cues
-Match the purple/blue app theme
-Include a "Back to App" button
+10. CREATE runtime.txt specifying Python version:
+```
+python-3.11.0
+Report back what files were created, updated, or already correct. List any security issues found.

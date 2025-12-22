@@ -6,6 +6,7 @@ async SQLite with SQLAlchemy.
 """
 from __future__ import annotations
 
+import os
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -20,6 +21,9 @@ from src.db.models import Base, ProcessorModel, ExampleModel, ExtractionModel, U
 
 logger = logging.getLogger(__name__)
 
+# Get database path from environment variable or use default
+DEFAULT_DB_PATH = os.getenv('DATABASE_PATH', 'quadd_extract.db')
+
 
 class Database:
     """
@@ -29,14 +33,21 @@ class Database:
     examples, and extraction history.
     """
 
-    def __init__(self, db_path: str = "quadd_extract.db"):
+    def __init__(self, db_path: str = None):
         """
         Initialize database connection.
 
         Args:
-            db_path: Path to SQLite database file
+            db_path: Path to SQLite database file (uses DATABASE_PATH env var if not provided)
         """
-        self.db_path = db_path
+        self.db_path = db_path if db_path is not None else DEFAULT_DB_PATH
+
+        # Ensure the database directory exists
+        db_dir = Path(self.db_path).parent
+        if db_dir and str(db_dir) != '.':
+            db_dir.mkdir(parents=True, exist_ok=True)
+            logger.info(f"Ensured database directory exists: {db_dir}")
+
         self.engine = None
         self.session_factory = None
         self._initialized = False
@@ -1007,12 +1018,12 @@ class Database:
 _db: Optional[Database] = None
 
 
-async def get_database(db_path: str = "quadd_extract.db") -> Database:
+async def get_database(db_path: str = None) -> Database:
     """
     Get or create global database instance.
 
     Args:
-        db_path: Path to database file
+        db_path: Path to database file (uses DATABASE_PATH env var if not provided)
 
     Returns:
         Initialized Database instance
