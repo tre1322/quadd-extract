@@ -47,6 +47,44 @@ logger = logging.getLogger(__name__)
 # APPLICATION LIFESPAN
 # =============================================================================
 
+async def ensure_admin_user(db):
+    """Create default admin user if it doesn't exist."""
+    import bcrypt
+    
+    try:
+        # Check if admin exists
+        admin = await db.get_user_by_email('admin@quadd.com')
+        
+        if admin:
+            logger.info(f"Admin user already exists: {admin['email']}")
+            return
+        
+        # Create admin user
+        logger.info("Creating default admin user...")
+        
+        password = "changeme123"
+        password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        
+        admin_id = str(uuid.uuid4())
+        
+        await db.create_user(
+            user_id=admin_id,
+            email='admin@quadd.com',
+            password_hash=password_hash,
+            name='Admin',
+            role='admin'
+        )
+        
+        logger.info("=" * 60)
+        logger.info("DEFAULT ADMIN USER CREATED")
+        logger.info("Email:    admin@quadd.com")
+        logger.info("Password: changeme123")
+        logger.info("=" * 60)
+        
+    except Exception as e:
+        logger.exception(f"Failed to create/check admin user: {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
@@ -76,6 +114,9 @@ async def lifespan(app: FastAPI):
         app.state.db = await get_database()
         logger.info("Database initialized")
 
+        # Ensure admin user exists
+        await ensure_admin_user(app.state.db)
+
         # Initialize learning service
         app.state.learning_service = LearningService(
             db=app.state.db,
@@ -98,7 +139,6 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down Quadd Extract API...")
     if app.state.db:
         await app.state.db.close()
-
 
 # =============================================================================
 # FASTAPI APP
