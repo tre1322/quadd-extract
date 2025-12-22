@@ -739,10 +739,10 @@
                     </div>
 
                     <div class="form-group">
-                        <label>Upload Example Document (PDF, Word, Excel, TXT, CSV, or Image)</label>
+                        <label>Upload Example Document (PDF)</label>
                         <div class="file-upload" id="example-upload">
-                            <input type="file" id="example-file" accept=".pdf,.txt,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg">
-                            <div>📄 Click to upload file</div>
+                            <input type="file" id="example-file" accept=".pdf">
+                            <div>📄 Click to upload PDF</div>
                             <div class="file-name" style="display: none;"></div>
                         </div>
                     </div>
@@ -794,10 +794,10 @@ Leading Scorers:
                     </div>
 
                     <div class="form-group">
-                        <label>Upload Document (PDF, Word, Excel, TXT, CSV, or Image)</label>
+                        <label>Upload Document (PDF)</label>
                         <div class="file-upload" id="extract-upload">
-                            <input type="file" id="extract-file" accept=".pdf,.txt,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg">
-                            <div>📄 Click to upload file</div>
+                            <input type="file" id="extract-file" accept=".pdf">
+                            <div>📄 Click to upload PDF</div>
                             <div class="file-name" style="display: none;"></div>
                         </div>
                         <div class="help-text">For basketball HUDL, scanned documents, etc.</div>
@@ -882,18 +882,10 @@ Johnson   1  1   2" rows="8"></textarea>
                     </div>
 
                     <!-- Summary Cards -->
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
                         <div class="usage-card">
-                            <div class="usage-card-label">Total Actions</div>
+                            <div class="usage-card-label">Total Documents</div>
                             <div class="usage-card-value" id="usage-total-docs">-</div>
-                        </div>
-                        <div class="usage-card">
-                            <div class="usage-card-label">Templates Created</div>
-                            <div class="usage-card-value" id="usage-learn-count" style="background: linear-gradient(135deg, #4caf50 0%, #45a049 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">-</div>
-                        </div>
-                        <div class="usage-card">
-                            <div class="usage-card-label">Transformations</div>
-                            <div class="usage-card-value" id="usage-transform-count" style="background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">-</div>
                         </div>
                         <div class="usage-card">
                             <div class="usage-card-label">Total Tokens</div>
@@ -934,7 +926,8 @@ Johnson   1  1   2" rows="8"></textarea>
                 <div id="status" class="status"></div>
 
                 <div id="output" class="output-area empty">
-                    No output yet. Upload a document to get started.
+                    Upload a document to get started!
+
                 </div>
 
                 <button class="btn btn-secondary" id="copy-btn" style="display: none;">
@@ -1260,11 +1253,11 @@ Johnson   1  1   2" rows="8"></textarea>
                 return;
             }
             if (!file && !sourceText) {
-                showStatus('Please upload a file (PDF, Word, Excel, TXT, CSV, or Image) OR paste source text', 'error');
+                showStatus('Please upload a PDF OR paste source text', 'error');
                 return;
             }
             if (file && sourceText) {
-                showStatus('Please provide either file upload OR pasted text, not both', 'error');
+                showStatus('Please provide either PDF upload OR pasted text, not both', 'error');
                 return;
             }
             if (!desiredOutput) {
@@ -1368,11 +1361,11 @@ This template will transform new documents the same way using AI.`;
                 return;
             }
             if (!file && !text) {
-                showStatus('Please upload a file (PDF, Word, Excel, TXT, CSV, or Image) or paste text', 'error');
+                showStatus('Please upload a PDF or paste text', 'error');
                 return;
             }
             if (file && text) {
-                showStatus('Please use either file upload OR text paste, not both', 'error');
+                showStatus('Please use either PDF upload OR text paste, not both', 'error');
                 return;
             }
 
@@ -2208,8 +2201,6 @@ This template will transform new documents the same way using AI.`;
 
                 // Update summary cards
                 document.getElementById('usage-total-docs').textContent = summary.total_documents.toLocaleString();
-                document.getElementById('usage-learn-count').textContent = summary.learn_count.toLocaleString();
-                document.getElementById('usage-transform-count').textContent = summary.transform_count.toLocaleString();
                 document.getElementById('usage-total-tokens').textContent = (summary.total_tokens / 1000).toFixed(1) + 'K';
                 document.getElementById('usage-total-cost').textContent = '$' + summary.total_cost.toFixed(2);
                 document.getElementById('usage-active-users').textContent = summary.unique_users.toLocaleString();
