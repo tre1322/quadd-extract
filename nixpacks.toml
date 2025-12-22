@@ -1,8 +1,9 @@
 [phases.setup]
-nixPkgs = ["python311", "tesseract", "poppler_utils"]
+nixPkgs = ["python311", "tesseract", "poppler_utils", "libGL", "glib"]
+aptPkgs = ["libgl1", "libglib2.0-0", "tesseract-ocr", "poppler-utils"]
 
 [phases.install]
-cmds = ["pip install -r requirements.txt"]
+cmds = ["pip install --upgrade pip", "pip install -r requirements.txt"]
 
 [start]
 cmd = "uvicorn src.api.main:app --host 0.0.0.0 --port ${PORT:-8000}"
