@@ -22,7 +22,10 @@
       "Bash(timeout 120 python:*)",
       "Bash(timeout 30 python:*)",
       "Bash(ls:*)",
-      "Bash(timeout 5 sleep:*)"
+      "Bash(timeout 5 sleep:*)",
+      "Bash(pip install:*)",
+      "Bash(powershell \"Get-Process python -ErrorAction SilentlyContinue | Select-Object Id,ProcessName,StartTime | Format-Table\")",
+      "Bash(timeout 5 python:*)"
     ]
   }
 }

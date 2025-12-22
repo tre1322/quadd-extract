@@ -452,10 +452,260 @@
             justify-content: flex-end;
             margin-top: 20px;
         }
+
+        /* Authentication Header Bar */
+        .auth-header {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 12px 20px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+        }
+
+        .auth-user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .auth-user-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .auth-user-role {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .btn-logout {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            padding: 8px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+        }
+
+        .btn-logout:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-1px);
+        }
+
+        .btn-help {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            padding: 8px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-help:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-1px);
+        }
+
+        .auth-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        /* Footer Styles */
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 30px;
+            padding: 20px;
+            opacity: 0.8;
+        }
+
+        .footer a {
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+            padding-bottom: 2px;
+            transition: all 0.3s;
+        }
+
+        .footer a:hover {
+            border-bottom-color: white;
+            opacity: 1;
+        }
+
+        /* User Card Styles */
+        .user-card {
+            background: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            transition: all 0.2s;
+        }
+
+        .user-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+        }
+
+        .user-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .user-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: #333;
+        }
+
+        .user-meta {
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 12px;
+        }
+
+        .user-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .user-role-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .role-admin {
+            background: #764ba2;
+            color: white;
+        }
+
+        .role-user {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-edit {
+            background: #2196f3;
+            color: white;
+        }
+
+        .btn-edit:hover {
+            background: #1976d2;
+        }
+
+        .btn-warning {
+            background: #ff9800;
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #f57c00;
+        }
+
+        /* Usage Tab Styles */
+        .usage-card {
+            background: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .usage-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+        }
+
+        .usage-card-label {
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .usage-card-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .usage-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        .usage-table th,
+        .usage-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .usage-table th {
+            background: #f5f5f5;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .usage-table tr:hover {
+            background: #f9f9f9;
+        }
+
+        .usage-cost {
+            color: #667eea;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
     <div class="container">
+        <!-- Authentication Header -->
+        <div class="auth-header">
+            <div class="auth-user-info">
+                <span class="auth-user-name" id="authUserName">Welcome, User</span>
+                <span class="auth-user-role" id="authUserRole">user</span>
+            </div>
+            <div class="auth-actions">
+                <a href="/help" target="_blank" class="btn-help">Help</a>
+                <button class="btn-logout" onclick="logout()">Logout</button>
+            </div>
+        </div>
+
         <div class="header">
             <h1>📄 Universal Document Learning</h1>
             <p>Learn from ANY document type - Basketball, Honor Rolls, Legal Notices, Events & More</p>
@@ -469,7 +719,9 @@
                 <div class="tab-buttons">
                     <button class="tab-btn active" data-tab="learn">Learn New</button>
                     <button class="tab-btn" data-tab="extract">Use Template</button>
-                    <button class="tab-btn" data-tab="manage">Manage Templates</button>
+                    <button class="tab-btn" data-tab="manage">Manage</button>
+                    <button class="tab-btn" data-tab="admin" id="admin-tab-btn" style="display: none;">Admin</button>
+                    <button class="tab-btn" data-tab="usage" id="usage-tab-btn" style="display: none;">Usage</button>
                 </div>
 
                 <!-- Learn Tab -->
@@ -487,12 +739,30 @@
                     </div>
 
                     <div class="form-group">
-                        <label>Upload Example Document (PDF)</label>
+                        <label>Upload Example Document (PDF, Word, Excel, TXT, CSV, or Image)</label>
                         <div class="file-upload" id="example-upload">
-                            <input type="file" id="example-file" accept=".pdf">
-                            <div>📄 Click to upload PDF</div>
+                            <input type="file" id="example-file" accept=".pdf,.txt,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg">
+                            <div>📄 Click to upload file</div>
                             <div class="file-name" style="display: none;"></div>
                         </div>
+                    </div>
+
+                    <div style="text-align: center; margin: 20px 0; color: #999; font-weight: 600;">
+                        ── OR ──
+                    </div>
+
+                    <div class="form-group">
+                        <label>Paste Source Text</label>
+                        <textarea id="source-text" placeholder="Paste the raw data from website, email, etc.
+
+Example (hockey stats):
+Player    G  A  PTS
+Smith     2  3   5
+Johnson   1  1   2
+Anderson  0  2   2
+
+Works for any text source - sports stats, honor rolls, legal notices, etc." rows="8"></textarea>
+                        <div class="help-text">For copy/pasted text from websites, spreadsheets, etc.</div>
                     </div>
 
                     <div class="form-group">
@@ -524,10 +794,10 @@ Leading Scorers:
                     </div>
 
                     <div class="form-group">
-                        <label>Upload Document (PDF)</label>
+                        <label>Upload Document (PDF, Word, Excel, TXT, CSV, or Image)</label>
                         <div class="file-upload" id="extract-upload">
-                            <input type="file" id="extract-file" accept=".pdf">
-                            <div>📄 Click to upload PDF</div>
+                            <input type="file" id="extract-file" accept=".pdf,.txt,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg">
+                            <div>📄 Click to upload file</div>
                             <div class="file-name" style="display: none;"></div>
                         </div>
                         <div class="help-text">For basketball HUDL, scanned documents, etc.</div>
@@ -577,6 +847,84 @@ Johnson   1  1   2" rows="8"></textarea>
                         </div>
                     </div>
                 </div>
+
+                <!-- Admin Tab -->
+                <div id="admin-tab" class="tab-content">
+                    <div class="form-group">
+                        <button class="btn btn-primary" id="add-user-btn">
+                            ➕ Add New User
+                        </button>
+                        <button class="btn btn-secondary" id="refresh-users-btn" style="margin-top: 10px;">
+                            🔄 Refresh List
+                        </button>
+                    </div>
+
+                    <div id="users-list">
+                        <div style="text-align: center; color: #999; padding: 40px;">
+                            Loading users...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Usage Tab -->
+                <div id="usage-tab" class="tab-content">
+                    <div class="form-group">
+                        <label>Date Range</label>
+                        <select id="usage-date-range">
+                            <option value="1">Today</option>
+                            <option value="7" selected>Last 7 Days</option>
+                            <option value="30">Last 30 Days</option>
+                            <option value="all">All Time</option>
+                        </select>
+                        <button class="btn btn-secondary" id="refresh-usage-btn" style="margin-left: 10px;">
+                            🔄 Refresh
+                        </button>
+                    </div>
+
+                    <!-- Summary Cards -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                        <div class="usage-card">
+                            <div class="usage-card-label">Total Actions</div>
+                            <div class="usage-card-value" id="usage-total-docs">-</div>
+                        </div>
+                        <div class="usage-card">
+                            <div class="usage-card-label">Templates Created</div>
+                            <div class="usage-card-value" id="usage-learn-count" style="background: linear-gradient(135deg, #4caf50 0%, #45a049 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">-</div>
+                        </div>
+                        <div class="usage-card">
+                            <div class="usage-card-label">Transformations</div>
+                            <div class="usage-card-value" id="usage-transform-count" style="background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">-</div>
+                        </div>
+                        <div class="usage-card">
+                            <div class="usage-card-label">Total Tokens</div>
+                            <div class="usage-card-value" id="usage-total-tokens">-</div>
+                        </div>
+                        <div class="usage-card">
+                            <div class="usage-card-label">Total Cost</div>
+                            <div class="usage-card-value" id="usage-total-cost">-</div>
+                        </div>
+                        <div class="usage-card">
+                            <div class="usage-card-label">Active Users</div>
+                            <div class="usage-card-value" id="usage-active-users">-</div>
+                        </div>
+                    </div>
+
+                    <!-- Per-User Table -->
+                    <h3 style="margin: 20px 0 10px 0;">Usage by User</h3>
+                    <div id="usage-by-user-table">
+                        <div style="text-align: center; color: #999; padding: 20px;">
+                            Loading user usage...
+                        </div>
+                    </div>
+
+                    <!-- Recent Activity -->
+                    <h3 style="margin: 20px 0 10px 0;">Recent Activity</h3>
+                    <div id="usage-recent-activity">
+                        <div style="text-align: center; color: #999; padding: 20px;">
+                            Loading recent activity...
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Right Panel: Output -->
@@ -593,6 +941,11 @@ Johnson   1  1   2" rows="8"></textarea>
                     📋 Copy to Clipboard
                 </button>
             </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>Need Help? <a href="/help" target="_blank">View the Help Guide</a></p>
         </div>
     </div>
 
@@ -632,9 +985,191 @@ Johnson   1  1   2" rows="8"></textarea>
         </div>
     </div>
 
+    <!-- Add User Modal -->
+    <div id="add-user-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add New User</h3>
+                <button class="modal-close" onclick="closeModal('add-user-modal')">&times;</button>
+            </div>
+            <div class="form-group">
+                <label>Name</label>
+                <input type="text" id="add-user-name" placeholder="Enter full name">
+            </div>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="text" id="add-user-email" placeholder="Enter email address">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="add-user-password" placeholder="Enter password">
+            </div>
+            <div class="form-group">
+                <label>Role</label>
+                <select id="add-user-role">
+                    <option value="user">User</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('add-user-modal')">Cancel</button>
+                <button class="btn btn-primary" id="save-user-btn">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit User Modal -->
+    <div id="edit-user-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit User</h3>
+                <button class="modal-close" onclick="closeModal('edit-user-modal')">&times;</button>
+            </div>
+            <div class="form-group">
+                <label>Name</label>
+                <input type="text" id="edit-user-name" placeholder="Enter full name">
+            </div>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="text" id="edit-user-email" placeholder="Enter email address">
+            </div>
+            <div class="form-group">
+                <label>Role</label>
+                <select id="edit-user-role">
+                    <option value="user">User</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('edit-user-modal')">Cancel</button>
+                <button class="btn btn-primary" id="update-user-btn">Update</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reset Password Modal -->
+    <div id="reset-password-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Reset Password</h3>
+                <button class="modal-close" onclick="closeModal('reset-password-modal')">&times;</button>
+            </div>
+            <div class="form-group">
+                <label>New Password</label>
+                <input type="password" id="reset-password-input" placeholder="Enter new password">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('reset-password-modal')">Cancel</button>
+                <button class="btn btn-primary" id="save-password-btn">Reset Password</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // API Base URL
         const API_BASE = window.location.origin;
+
+        // =====================================================================
+        // AUTHENTICATION
+        // =====================================================================
+
+        // Get auth token from localStorage
+        function getAuthToken() {
+            return localStorage.getItem('auth_token');
+        }
+
+        // Get auth headers for API calls
+        function getAuthHeaders() {
+            const token = getAuthToken();
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            return headers;
+        }
+
+        // Check authentication on page load
+        async function checkAuth() {
+            const token = getAuthToken();
+
+            if (!token) {
+                // No token, redirect to login
+                window.location.href = '/login';
+                return;
+            }
+
+            try {
+                // Validate token by calling /api/auth/me
+                const response = await fetch(`${API_BASE}/api/auth/me`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    // Token invalid or expired
+                    throw new Error('Invalid token');
+                }
+
+                const user = await response.json();
+
+                // Update UI with user info
+                document.getElementById('authUserName').textContent = `Welcome, ${user.name}`;
+                document.getElementById('authUserRole').textContent = user.role;
+
+                // Store user info
+                localStorage.setItem('user_id', user.id);
+                localStorage.setItem('user_name', user.name);
+                localStorage.setItem('user_email', user.email);
+                localStorage.setItem('user_role', user.role);
+
+                // Show admin tabs if user is admin
+                if (user.role === 'admin') {
+                    document.getElementById('admin-tab-btn').style.display = 'block';
+                    document.getElementById('usage-tab-btn').style.display = 'block';
+                }
+
+            } catch (error) {
+                // Token validation failed, clear localStorage and redirect
+                localStorage.removeItem('auth_token');
+                localStorage.removeItem('user_name');
+                localStorage.removeItem('user_email');
+                localStorage.removeItem('user_role');
+                window.location.href = '/login';
+            }
+        }
+
+        // Logout function
+        function logout() {
+            // Clear localStorage
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('user_id');
+            localStorage.removeItem('user_name');
+            localStorage.removeItem('user_email');
+            localStorage.removeItem('user_role');
+
+            // Redirect to login
+            window.location.href = '/login';
+        }
+
+        // Handle 401 responses (unauthorized)
+        function handleUnauthorized() {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('user_id');
+            localStorage.removeItem('user_name');
+            localStorage.removeItem('user_email');
+            localStorage.removeItem('user_role');
+            window.location.href = '/login';
+        }
+
+        // Run auth check on page load
+        checkAuth();
+
+        // =====================================================================
+        // UI FUNCTIONS
+        // =====================================================================
 
         // Tab switching
         document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -712,6 +1247,7 @@ Johnson   1  1   2" rows="8"></textarea>
             const name = document.getElementById('processor-name').value.trim();
             const docType = document.getElementById('document-type').value.trim();
             const file = document.getElementById('example-file').files[0];
+            const sourceText = document.getElementById('source-text').value.trim();
             const desiredOutput = document.getElementById('desired-output').value.trim();
 
             // Validation
@@ -723,8 +1259,12 @@ Johnson   1  1   2" rows="8"></textarea>
                 showStatus('Please enter a document type', 'error');
                 return;
             }
-            if (!file) {
-                showStatus('Please upload an example document', 'error');
+            if (!file && !sourceText) {
+                showStatus('Please upload a file (PDF, Word, Excel, TXT, CSV, or Image) OR paste source text', 'error');
+                return;
+            }
+            if (file && sourceText) {
+                showStatus('Please provide either file upload OR pasted text, not both', 'error');
                 return;
             }
             if (!desiredOutput) {
@@ -736,7 +1276,13 @@ Johnson   1  1   2" rows="8"></textarea>
             const formData = new FormData();
             formData.append('name', name);
             formData.append('document_type', docType);
-            formData.append('example_file', file);
+
+            if (file) {
+                formData.append('example_file', file);
+            } else {
+                formData.append('source_text', sourceText);
+            }
+
             formData.append('desired_output', desiredOutput);
 
             // Disable button and show loading
@@ -744,31 +1290,43 @@ Johnson   1  1   2" rows="8"></textarea>
             const originalText = btn.innerHTML;
             btn.disabled = true;
             btn.innerHTML = '<span class="loading"></span> Learning...';
-            showStatus('Learning from example... This may take 30-60 seconds.', 'info');
+            const inputType = file ? 'PDF' : 'text';
+            showStatus(`Learning from ${inputType} example... This may take 30-60 seconds.`, 'info');
             clearOutput();
 
             try {
+                const token = getAuthToken();
                 const response = await fetch(`${API_BASE}/api/simple/learn`, {
                     method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
                     body: formData
                 });
 
                 const data = await response.json();
+
+                if (response.status === 401) {
+                    handleUnauthorized();
+                    return;
+                }
 
                 if (!response.ok) {
                     throw new Error(data.detail || 'Learning failed');
                 }
 
                 // Success!
-                showStatus(`Success! Template "${name}" learned and saved.`, 'success');
+                const inputType = file ? 'PDF' : 'text';
+                showStatus(`Success! Template "${name}" learned and saved (${inputType} source).`, 'success');
 
                 // Show results
                 const output = `LEARNING SUCCESSFUL!
 Template ID: ${data.processor_id}
 Name: ${data.name}
+Source Type: ${inputType.toUpperCase()}
 
 Simple Transformer Approach:
-- Input extracted: ${data.input_length} characters
+- Input extracted: ${data.input_length} ${file ? 'pages' : 'characters'}
 - Example output: ${data.output_length} characters
 - Method: LLM-based transformation (no complex column mapping)
 
@@ -783,6 +1341,7 @@ This template will transform new documents the same way using AI.`;
                 document.getElementById('processor-name').value = '';
                 document.getElementById('document-type').value = '';
                 document.getElementById('desired-output').value = '';
+                document.getElementById('source-text').value = '';
                 document.getElementById('example-file').value = '';
                 document.querySelector('#example-upload .file-name').style.display = 'none';
                 document.getElementById('example-upload').classList.remove('has-file');
@@ -809,11 +1368,11 @@ This template will transform new documents the same way using AI.`;
                 return;
             }
             if (!file && !text) {
-                showStatus('Please upload a PDF or paste text', 'error');
+                showStatus('Please upload a file (PDF, Word, Excel, TXT, CSV, or Image) or paste text', 'error');
                 return;
             }
             if (file && text) {
-                showStatus('Please use either PDF upload OR text paste, not both', 'error');
+                showStatus('Please use either file upload OR text paste, not both', 'error');
                 return;
             }
 
@@ -836,12 +1395,21 @@ This template will transform new documents the same way using AI.`;
             clearOutput();
 
             try {
+                const token = getAuthToken();
                 const response = await fetch(`${API_BASE}/api/simple/transform`, {
                     method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
                     body: formData
                 });
 
                 const data = await response.json();
+
+                if (response.status === 401) {
+                    handleUnauthorized();
+                    return;
+                }
 
                 if (!response.ok) {
                     throw new Error(data.detail || 'Transformation failed');
@@ -894,7 +1462,18 @@ This template will transform new documents the same way using AI.`;
         // Load processors for extract tab dropdown
         async function loadProcessorList() {
             try {
-                const response = await fetch(`${API_BASE}/api/processors`);
+                const token = getAuthToken();
+                const response = await fetch(`${API_BASE}/api/processors`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.status === 401) {
+                    handleUnauthorized();
+                    return;
+                }
+
                 const data = await response.json();
 
                 const select = document.getElementById('processor-select');
@@ -919,7 +1498,18 @@ This template will transform new documents the same way using AI.`;
             listEl.innerHTML = '<div style="text-align: center; color: #999; padding: 40px;">Loading processors...</div>';
 
             try {
-                const response = await fetch(`${API_BASE}/api/simple/processors`);
+                const token = getAuthToken();
+                const response = await fetch(`${API_BASE}/api/simple/processors`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.status === 401) {
+                    handleUnauthorized();
+                    return;
+                }
+
                 const data = await response.json();
 
                 if (!response.ok) {
@@ -1023,13 +1613,20 @@ This template will transform new documents the same way using AI.`;
             try {
                 showStatus(`Deleting ${selectedIds.length} template(s)...`, 'info');
 
+                const token = getAuthToken();
                 const response = await fetch(`${API_BASE}/api/simple/processors/bulk-delete`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
                     },
                     body: JSON.stringify(selectedIds)
                 });
+
+                if (response.status === 401) {
+                    handleUnauthorized();
+                    return;
+                }
 
                 const data = await response.json();
 
@@ -1075,7 +1672,18 @@ This template will transform new documents the same way using AI.`;
 
             try {
                 // Get current processor data
-                const response = await fetch(`${API_BASE}/api/processors/${processorId}`);
+                const token = getAuthToken();
+                const response = await fetch(`${API_BASE}/api/processors/${processorId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.status === 401) {
+                    handleUnauthorized();
+                    return;
+                }
+
                 const data = await response.json();
 
                 if (!response.ok) {
@@ -1113,9 +1721,18 @@ This template will transform new documents the same way using AI.`;
             }
 
             try {
+                const token = getAuthToken();
                 const response = await fetch(`${API_BASE}/api/simple/processors/${processorId}`, {
-                    method: 'DELETE'
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
                 });
+
+                if (response.status === 401) {
+                    handleUnauthorized();
+                    return;
+                }
 
                 const data = await response.json();
 
@@ -1147,10 +1764,19 @@ This template will transform new documents the same way using AI.`;
                 const formData = new FormData();
                 formData.append('name', newName);
 
+                const token = getAuthToken();
                 const response = await fetch(`${API_BASE}/api/simple/processors/${currentEditProcessor}`, {
                     method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
                     body: formData
                 });
+
+                if (response.status === 401) {
+                    handleUnauthorized();
+                    return;
+                }
 
                 const data = await response.json();
 
@@ -1183,10 +1809,19 @@ This template will transform new documents the same way using AI.`;
                 const formData = new FormData();
                 formData.append('desired_output', newExample);
 
+                const token = getAuthToken();
                 const response = await fetch(`${API_BASE}/api/simple/processors/${currentEditProcessor}`, {
                     method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
                     body: formData
                 });
+
+                if (response.status === 401) {
+                    handleUnauthorized();
+                    return;
+                }
 
                 const data = await response.json();
 
@@ -1217,6 +1852,10 @@ This template will transform new documents the same way using AI.`;
             btn.addEventListener('click', () => {
                 if (btn.dataset.tab === 'manage') {
                     loadManageProcessors();
+                } else if (btn.dataset.tab === 'admin') {
+                    loadUsers();
+                } else if (btn.dataset.tab === 'usage') {
+                    loadUsageData();
                 }
             });
         });
@@ -1229,6 +1868,528 @@ This template will transform new documents the same way using AI.`;
                 }
             });
         });
+
+        // =====================================================================
+        // ADMIN PANEL FUNCTIONS
+        // =====================================================================
+
+        let currentEditUserId = null;
+
+        // Load users for admin panel
+        async function loadUsers() {
+            const listEl = document.getElementById('users-list');
+            listEl.innerHTML = '<div style="text-align: center; color: #999; padding: 40px;">Loading users...</div>';
+
+            try {
+                const token = getAuthToken();
+                const response = await fetch(`${API_BASE}/api/auth/users`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.status === 401 || response.status === 403) {
+                    handleUnauthorized();
+                    return;
+                }
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Failed to load users');
+                }
+
+                const users = data.users || [];
+
+                if (users.length === 0) {
+                    listEl.innerHTML = '<div style="text-align: center; color: #999; padding: 40px;">No users found.</div>';
+                    return;
+                }
+
+                // Get current user ID to prevent self-deletion
+                const currentUserId = localStorage.getItem('user_id');
+
+                // Render users
+                listEl.innerHTML = users.map(user => {
+                    const roleClass = user.role === 'admin' ? 'role-admin' : 'role-user';
+                    const createdDate = user.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unknown';
+                    const canDelete = user.id !== currentUserId;
+
+                    return `
+                    <div class="user-card">
+                        <div class="user-header">
+                            <div class="user-name">${escapeHtml(user.name)}</div>
+                            <span class="user-role-badge ${roleClass}">${user.role}</span>
+                        </div>
+                        <div class="user-meta">
+                            Email: ${escapeHtml(user.email)} | Created: ${createdDate} | Templates: ${user.template_count}
+                        </div>
+                        <div class="user-actions">
+                            <button class="btn btn-edit btn-small" onclick="openEditUserModal('${user.id}', '${escapeHtml(user.name)}', '${escapeHtml(user.email)}', '${user.role}')">
+                                ✏️ Edit
+                            </button>
+                            <button class="btn btn-warning btn-small" onclick="openResetPasswordModal('${user.id}', '${escapeHtml(user.name)}')">
+                                🔑 Reset Password
+                            </button>
+                            <button class="btn btn-danger btn-small" onclick="deleteUser('${user.id}', '${escapeHtml(user.name)}')" ${!canDelete ? 'disabled' : ''}>
+                                🗑️ Delete
+                            </button>
+                        </div>
+                    </div>
+                `;
+                }).join('');
+
+            } catch (error) {
+                console.error('Failed to load users:', error);
+                listEl.innerHTML = `<div style="text-align: center; color: #f44336; padding: 40px;">Error: ${error.message}</div>`;
+            }
+        }
+
+        // Open add user modal
+        function openAddUserModal() {
+            document.getElementById('add-user-name').value = '';
+            document.getElementById('add-user-email').value = '';
+            document.getElementById('add-user-password').value = '';
+            document.getElementById('add-user-role').value = 'user';
+            document.getElementById('add-user-modal').classList.add('show');
+        }
+
+        // Save new user
+        async function saveNewUser() {
+            const name = document.getElementById('add-user-name').value.trim();
+            const email = document.getElementById('add-user-email').value.trim();
+            const password = document.getElementById('add-user-password').value;
+            const role = document.getElementById('add-user-role').value;
+
+            if (!name || !email || !password) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            if (password.length < 6) {
+                alert('Password must be at least 6 characters');
+                return;
+            }
+
+            try {
+                const token = getAuthToken();
+                const response = await fetch(`${API_BASE}/api/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        email: email,
+                        password: password,
+                        role: role
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.status === 401 || response.status === 403) {
+                    handleUnauthorized();
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Failed to create user');
+                }
+
+                showStatus(`User ${name} created successfully!`, 'success');
+                closeModal('add-user-modal');
+                await loadUsers();
+
+            } catch (error) {
+                console.error('Failed to create user:', error);
+                showStatus(`Failed to create user: ${error.message}`, 'error');
+            }
+        }
+
+        // Open edit user modal
+        function openEditUserModal(userId, name, email, role) {
+            currentEditUserId = userId;
+            document.getElementById('edit-user-name').value = name;
+            document.getElementById('edit-user-email').value = email;
+            document.getElementById('edit-user-role').value = role;
+            document.getElementById('edit-user-modal').classList.add('show');
+        }
+
+        // Update user
+        async function updateUser() {
+            if (!currentEditUserId) return;
+
+            const name = document.getElementById('edit-user-name').value.trim();
+            const email = document.getElementById('edit-user-email').value.trim();
+            const role = document.getElementById('edit-user-role').value;
+
+            if (!name || !email) {
+                alert('Name and email cannot be empty');
+                return;
+            }
+
+            try {
+                const token = getAuthToken();
+                const response = await fetch(`${API_BASE}/api/auth/users/${currentEditUserId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        email: email,
+                        role: role
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.status === 401 || response.status === 403) {
+                    handleUnauthorized();
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Failed to update user');
+                }
+
+                showStatus('User updated successfully!', 'success');
+                closeModal('edit-user-modal');
+                await loadUsers();
+
+            } catch (error) {
+                console.error('Failed to update user:', error);
+                showStatus(`Failed to update user: ${error.message}`, 'error');
+            }
+        }
+
+        // Open reset password modal
+        function openResetPasswordModal(userId, userName) {
+            currentEditUserId = userId;
+            document.getElementById('reset-password-input').value = '';
+            document.getElementById('reset-password-modal').classList.add('show');
+        }
+
+        // Reset password
+        async function resetPassword() {
+            if (!currentEditUserId) return;
+
+            const newPassword = document.getElementById('reset-password-input').value;
+
+            if (!newPassword) {
+                alert('Please enter a new password');
+                return;
+            }
+
+            if (newPassword.length < 6) {
+                alert('Password must be at least 6 characters');
+                return;
+            }
+
+            try {
+                const token = getAuthToken();
+                const response = await fetch(`${API_BASE}/api/auth/users/${currentEditUserId}/password`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        new_password: newPassword
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.status === 401 || response.status === 403) {
+                    handleUnauthorized();
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Failed to reset password');
+                }
+
+                showStatus('Password reset successfully!', 'success');
+                closeModal('reset-password-modal');
+
+            } catch (error) {
+                console.error('Failed to reset password:', error);
+                showStatus(`Failed to reset password: ${error.message}`, 'error');
+            }
+        }
+
+        // Delete user
+        async function deleteUser(userId, userName) {
+            if (!confirm(`Are you sure you want to delete user "${userName}"?\n\nThis action cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                const token = getAuthToken();
+                const response = await fetch(`${API_BASE}/api/auth/users/${userId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.status === 401 || response.status === 403) {
+                    handleUnauthorized();
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Failed to delete user');
+                }
+
+                showStatus(`User "${userName}" deleted successfully!`, 'success');
+                await loadUsers();
+
+            } catch (error) {
+                console.error('Failed to delete user:', error);
+                showStatus(`Failed to delete user: ${error.message}`, 'error');
+            }
+        }
+
+        // Admin panel button event listeners
+        document.getElementById('add-user-btn').addEventListener('click', openAddUserModal);
+        document.getElementById('refresh-users-btn').addEventListener('click', loadUsers);
+        document.getElementById('save-user-btn').addEventListener('click', saveNewUser);
+        document.getElementById('update-user-btn').addEventListener('click', updateUser);
+        document.getElementById('save-password-btn').addEventListener('click', resetPassword);
+
+        // =====================================================================
+        // USAGE ANALYTICS FUNCTIONS
+        // =====================================================================
+
+        // Load all usage data
+        async function loadUsageData() {
+            const dateRange = document.getElementById('usage-date-range').value;
+            const days = dateRange === 'all' ? null : parseInt(dateRange);
+
+            // Load summary, user breakdown, and recent activity in parallel
+            await Promise.all([
+                loadUsageSummary(days),
+                loadUsageByUser(days),
+                loadRecentActivity(days)
+            ]);
+        }
+
+        // Load usage summary cards
+        async function loadUsageSummary(days = null) {
+            try {
+                const token = getAuthToken();
+                const url = days ? `${API_BASE}/api/admin/usage/summary?days=${days}` : `${API_BASE}/api/admin/usage/summary`;
+
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.status === 401 || response.status === 403) {
+                    handleUnauthorized();
+                    return;
+                }
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Failed to load usage summary');
+                }
+
+                const summary = data.summary;
+
+                // Update summary cards
+                document.getElementById('usage-total-docs').textContent = summary.total_documents.toLocaleString();
+                document.getElementById('usage-learn-count').textContent = summary.learn_count.toLocaleString();
+                document.getElementById('usage-transform-count').textContent = summary.transform_count.toLocaleString();
+                document.getElementById('usage-total-tokens').textContent = (summary.total_tokens / 1000).toFixed(1) + 'K';
+                document.getElementById('usage-total-cost').textContent = '$' + summary.total_cost.toFixed(2);
+                document.getElementById('usage-active-users').textContent = summary.unique_users.toLocaleString();
+
+            } catch (error) {
+                console.error('Failed to load usage summary:', error);
+                showStatus(`Failed to load usage summary: ${error.message}`, 'error');
+            }
+        }
+
+        // Load per-user usage table
+        async function loadUsageByUser(days = null) {
+            const tableEl = document.getElementById('usage-by-user-table');
+            tableEl.innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">Loading user usage...</div>';
+
+            try {
+                const token = getAuthToken();
+                const url = days ? `${API_BASE}/api/admin/usage/by-user?days=${days}` : `${API_BASE}/api/admin/usage/by-user`;
+
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.status === 401 || response.status === 403) {
+                    handleUnauthorized();
+                    return;
+                }
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Failed to load usage by user');
+                }
+
+                const users = data.users || [];
+
+                if (users.length === 0) {
+                    tableEl.innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">No usage data found.</div>';
+                    return;
+                }
+
+                // Create table
+                let tableHTML = `
+                <table class="usage-table">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Documents</th>
+                            <th>Tokens</th>
+                            <th>Cost</th>
+                            <th>Last Active</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                `;
+
+                users.forEach(user => {
+                    const lastActive = user.last_active ? new Date(user.last_active).toLocaleDateString() : 'Never';
+                    tableHTML += `
+                    <tr>
+                        <td>
+                            <strong>${escapeHtml(user.user_name)}</strong><br>
+                            <small style="color: #999;">${escapeHtml(user.user_email)}</small>
+                        </td>
+                        <td>${user.document_count.toLocaleString()}</td>
+                        <td>${(user.total_tokens / 1000).toFixed(1)}K</td>
+                        <td class="usage-cost">$${user.total_cost.toFixed(2)}</td>
+                        <td>${lastActive}</td>
+                    </tr>
+                    `;
+                });
+
+                tableHTML += `
+                    </tbody>
+                </table>
+                `;
+
+                tableEl.innerHTML = tableHTML;
+
+            } catch (error) {
+                console.error('Failed to load usage by user:', error);
+                tableEl.innerHTML = `<div style="text-align: center; color: #f44336; padding: 20px;">Error: ${error.message}</div>`;
+            }
+        }
+
+        // Load recent activity log
+        async function loadRecentActivity(days = null) {
+            const activityEl = document.getElementById('usage-recent-activity');
+            activityEl.innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">Loading recent activity...</div>';
+
+            try {
+                const token = getAuthToken();
+                const url = days
+                    ? `${API_BASE}/api/admin/usage/recent?days=${days}&limit=50`
+                    : `${API_BASE}/api/admin/usage/recent?limit=50`;
+
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.status === 401 || response.status === 403) {
+                    handleUnauthorized();
+                    return;
+                }
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Failed to load recent activity');
+                }
+
+                const logs = data.logs || [];
+
+                if (logs.length === 0) {
+                    activityEl.innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">No activity found.</div>';
+                    return;
+                }
+
+                // Create table
+                let tableHTML = `
+                <table class="usage-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>User</th>
+                            <th>Template</th>
+                            <th>Action</th>
+                            <th>Type</th>
+                            <th>Tokens</th>
+                            <th>Cost</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                `;
+
+                logs.forEach(log => {
+                    const time = new Date(log.created_at).toLocaleString();
+                    const status = log.success ? '✅' : '❌';
+                    const actionType = log.action_type || 'transform';
+                    const actionBadge = actionType === 'learn'
+                        ? '<span style="background: #4caf50; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">LEARN</span>'
+                        : '<span style="background: #2196f3; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">TRANSFORM</span>';
+                    tableHTML += `
+                    <tr>
+                        <td><small>${time}</small></td>
+                        <td>
+                            <strong>${escapeHtml(log.user_name)}</strong><br>
+                            <small style="color: #999;">${escapeHtml(log.user_email)}</small>
+                        </td>
+                        <td>${escapeHtml(log.processor_name)}</td>
+                        <td>${actionBadge}</td>
+                        <td>${log.input_type.toUpperCase()}</td>
+                        <td>${(log.total_tokens / 1000).toFixed(1)}K</td>
+                        <td class="usage-cost">$${log.cost.toFixed(4)}</td>
+                        <td style="text-align: center;">${status}</td>
+                    </tr>
+                    `;
+                });
+
+                tableHTML += `
+                    </tbody>
+                </table>
+                `;
+
+                activityEl.innerHTML = tableHTML;
+
+            } catch (error) {
+                console.error('Failed to load recent activity:', error);
+                activityEl.innerHTML = `<div style="text-align: center; color: #f44336; padding: 20px;">Error: ${error.message}</div>`;
+            }
+        }
+
+        // Usage tab event listeners
+        document.getElementById('usage-date-range').addEventListener('change', loadUsageData);
+        document.getElementById('refresh-usage-btn').addEventListener('click', loadUsageData);
     </script>
 </body>
 </html>

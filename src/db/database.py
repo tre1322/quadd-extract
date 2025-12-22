@@ -16,7 +16,7 @@ from sqlalchemy import select, text, delete, update
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.exc import IntegrityError
 
-from src.db.models import Base, ProcessorModel, ExampleModel, ExtractionModel
+from src.db.models import Base, ProcessorModel, ExampleModel, ExtractionModel, UserModel, UsageLogModel
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +91,8 @@ class Database:
         processor_id: str,
         name: str,
         document_type: str,
-        processor_json: str
+        processor_json: str,
+        user_id: Optional[str] = None
     ) -> str:
         """
         Create a new processor.
@@ -101,6 +102,7 @@ class Database:
             name: Human-readable name
             document_type: Document type this processor handles
             processor_json: Full Processor serialized as JSON
+            user_id: User ID who owns this processor (optional)
 
         Returns:
             Processor ID
@@ -114,6 +116,7 @@ class Database:
                 name=name,
                 document_type=document_type,
                 processor_json=processor_json,
+                user_id=user_id,
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow(),
                 version=1,
@@ -154,6 +157,7 @@ class Database:
                     'name': processor.name,
                     'document_type': processor.document_type,
                     'processor_json': processor.processor_json,
+                    'user_id': processor.user_id,  # Include user_id for ownership checks
                     'created_at': processor.created_at,
                     'updated_at': processor.updated_at,
                     'version': processor.version,
@@ -177,6 +181,7 @@ class Database:
                     'name': processor.name,
                     'document_type': processor.document_type,
                     'processor_json': processor.processor_json,
+                    'user_id': processor.user_id,  # Include user_id for ownership checks
                     'created_at': processor.created_at,
                     'updated_at': processor.updated_at,
                     'version': processor.version,
@@ -213,6 +218,7 @@ class Database:
                     'name': p.name,
                     'document_type': p.document_type,
                     'processor_json': p.processor_json,
+                    'user_id': p.user_id,  # Include user_id for filtering
                     'created_at': p.created_at,
                     'updated_at': p.updated_at,
                     'version': p.version,
@@ -226,7 +232,10 @@ class Database:
     async def update_processor(
         self,
         processor_id: str,
-        processor_json: str,
+        name: Optional[str] = None,
+        document_type: Optional[str] = None,
+        processor_json: Optional[str] = None,
+        user_id: Optional[str] = None,
         increment_version: bool = True
     ) -> bool:
         """
@@ -234,20 +243,32 @@ class Database:
 
         Args:
             processor_id: Processor ID
-            processor_json: Updated processor JSON
+            name: Updated name (optional)
+            document_type: Updated document type (optional)
+            processor_json: Updated processor JSON (optional)
+            user_id: Updated user_id (optional, for assigning orphaned templates)
             increment_version: Whether to increment version number
 
         Returns:
             True if updated, False if not found
         """
         async with self.session_factory() as session:
+            # Build update values
+            values = {'updated_at': datetime.utcnow()}
+
+            if name is not None:
+                values['name'] = name
+            if document_type is not None:
+                values['document_type'] = document_type
+            if processor_json is not None:
+                values['processor_json'] = processor_json
+            if user_id is not None:
+                values['user_id'] = user_id
+
             stmt = (
                 update(ProcessorModel)
                 .where(ProcessorModel.id == processor_id)
-                .values(
-                    processor_json=processor_json,
-                    updated_at=datetime.utcnow()
-                )
+                .values(**values)
             )
 
             if increment_version:
@@ -308,6 +329,249 @@ class Database:
             )
             await session.execute(stmt)
             await session.commit()
+
+    # =========================================================================
+    # USER OPERATIONS
+    # =========================================================================
+
+    async def create_user(
+        self,
+        user_id: str,
+        email: str,
+        password_hash: str,
+        name: str,
+        role: str = 'user'
+    ) -> str:
+        """
+        Create a new user.
+
+        Args:
+            user_id: Unique user ID (UUID)
+            email: User email (unique)
+            password_hash: Hashed password
+            name: User's full name
+            role: User role ('user' or 'admin')
+
+        Returns:
+            User ID
+
+        Raises:
+            IntegrityError: If user with this email already exists
+        """
+        async with self.session_factory() as session:
+            user = UserModel(
+                id=user_id,
+                email=email,
+                password_hash=password_hash,
+                name=name,
+                role=role,
+                created_at=datetime.utcnow()
+            )
+
+            session.add(user)
+
+            try:
+                await session.commit()
+                logger.info(f"Created user: {email} ({user_id})")
+                return user_id
+            except IntegrityError as e:
+                await session.rollback()
+                logger.error(f"Failed to create user {email}: {e}")
+                raise
+
+    async def get_user(self, user_id: str) -> Optional[dict]:
+        """
+        Get user by ID.
+
+        Args:
+            user_id: User ID
+
+        Returns:
+            Dictionary with user data, or None if not found
+        """
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(UserModel).where(UserModel.id == user_id)
+            )
+            user = result.scalar_one_or_none()
+
+            if user:
+                return {
+                    'id': user.id,
+                    'email': user.email,
+                    'password_hash': user.password_hash,
+                    'name': user.name,
+                    'role': user.role,
+                    'created_at': user.created_at
+                }
+            return None
+
+    async def get_user_by_email(self, email: str) -> Optional[dict]:
+        """
+        Get user by email.
+
+        Args:
+            email: User email
+
+        Returns:
+            Dictionary with user data, or None if not found
+        """
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(UserModel).where(UserModel.email == email)
+            )
+            user = result.scalar_one_or_none()
+
+            if user:
+                return {
+                    'id': user.id,
+                    'email': user.email,
+                    'password_hash': user.password_hash,
+                    'name': user.name,
+                    'role': user.role,
+                    'created_at': user.created_at
+                }
+            return None
+
+    async def list_users(self) -> List[dict]:
+        """
+        List all users.
+
+        Returns:
+            List of user dictionaries (without password hashes)
+        """
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(UserModel).order_by(UserModel.created_at.desc())
+            )
+            users = result.scalars().all()
+
+            return [
+                {
+                    'id': u.id,
+                    'email': u.email,
+                    'name': u.name,
+                    'role': u.role,
+                    'created_at': u.created_at
+                }
+                for u in users
+            ]
+
+    async def count_processors_by_user(self, user_id: str) -> int:
+        """
+        Count number of processors owned by a user.
+
+        Args:
+            user_id: User ID
+
+        Returns:
+            Number of processors owned by user
+        """
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(ProcessorModel).where(ProcessorModel.user_id == user_id)
+            )
+            processors = result.scalars().all()
+            return len(processors)
+
+    async def update_user(
+        self,
+        user_id: str,
+        name: Optional[str] = None,
+        email: Optional[str] = None,
+        role: Optional[str] = None
+    ) -> bool:
+        """
+        Update user details.
+
+        Args:
+            user_id: User ID
+            name: New name (optional)
+            email: New email (optional)
+            role: New role (optional)
+
+        Returns:
+            True if updated, False if not found
+
+        Raises:
+            IntegrityError: If email already exists
+        """
+        async with self.session_factory() as session:
+            updates = {}
+            if name is not None:
+                updates['name'] = name
+            if email is not None:
+                updates['email'] = email
+            if role is not None:
+                updates['role'] = role
+
+            if not updates:
+                return False
+
+            stmt = (
+                update(UserModel)
+                .where(UserModel.id == user_id)
+                .values(**updates)
+            )
+
+            try:
+                result = await session.execute(stmt)
+                await session.commit()
+
+                if result.rowcount > 0:
+                    logger.info(f"Updated user {user_id}: {updates}")
+                    return True
+                return False
+            except IntegrityError as e:
+                await session.rollback()
+                logger.error(f"Failed to update user {user_id}: {e}")
+                raise
+
+    async def update_user_password(self, user_id: str, new_password_hash: str) -> bool:
+        """
+        Update user password.
+
+        Args:
+            user_id: User ID
+            new_password_hash: New hashed password
+
+        Returns:
+            True if updated, False if not found
+        """
+        async with self.session_factory() as session:
+            stmt = (
+                update(UserModel)
+                .where(UserModel.id == user_id)
+                .values(password_hash=new_password_hash)
+            )
+
+            result = await session.execute(stmt)
+            await session.commit()
+
+            if result.rowcount > 0:
+                logger.info(f"Updated password for user {user_id}")
+                return True
+            return False
+
+    async def delete_user(self, user_id: str) -> bool:
+        """
+        Delete a user.
+
+        Args:
+            user_id: User ID
+
+        Returns:
+            True if deleted, False if not found
+        """
+        async with self.session_factory() as session:
+            stmt = delete(UserModel).where(UserModel.id == user_id)
+            result = await session.execute(stmt)
+            await session.commit()
+
+            if result.rowcount > 0:
+                logger.info(f"Deleted user {user_id}")
+                return True
+            return False
 
     # =========================================================================
     # EXAMPLE OPERATIONS
@@ -450,6 +714,293 @@ class Database:
                 }
                 for e in extractions
             ]
+
+    # =========================================================================
+    # USAGE LOG OPERATIONS
+    # =========================================================================
+
+    async def log_usage(
+        self,
+        user_id: str,
+        processor_id: Optional[str],
+        processor_name: str,
+        document_type: str,
+        input_type: str,
+        input_tokens: int,
+        output_tokens: int,
+        success: bool,
+        error_message: Optional[str] = None,
+        action_type: str = 'transform'
+    ) -> str:
+        """
+        Log API usage for analytics.
+
+        Args:
+            user_id: User who made the request
+            processor_id: Processor used (nullable if deleted)
+            processor_name: Processor name for reference
+            document_type: Type of document processed
+            input_type: 'pdf' or 'text'
+            input_tokens: Number of input tokens
+            output_tokens: Number of output tokens
+            success: Whether transformation succeeded
+            error_message: Error message if failed
+            action_type: 'learn' or 'transform' (default: 'transform')
+
+        Returns:
+            Usage log ID
+        """
+        # Calculate cost (Claude Sonnet 4 pricing)
+        # Input: $3 per 1M tokens
+        # Output: $15 per 1M tokens
+        input_cost = (input_tokens / 1_000_000) * 3.0
+        output_cost = (output_tokens / 1_000_000) * 15.0
+        total_cost = input_cost + output_cost
+        total_tokens = input_tokens + output_tokens
+
+        log_id = str(uuid.uuid4())
+
+        async with self.session_factory() as session:
+            usage_log = UsageLogModel(
+                id=log_id,
+                user_id=user_id,
+                processor_id=processor_id,
+                processor_name=processor_name,
+                document_type=document_type,
+                action_type=action_type,
+                input_type=input_type,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                total_tokens=total_tokens,
+                cost=total_cost,
+                success=success,
+                error_message=error_message,
+                created_at=datetime.utcnow()
+            )
+
+            session.add(usage_log)
+            await session.commit()
+
+        logger.debug(f"Logged usage: {log_id} (user: {user_id}, action: {action_type}, tokens: {total_tokens}, cost: ${total_cost:.4f})")
+        return log_id
+
+    async def get_usage_by_user(
+        self,
+        user_id: str,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None
+    ) -> List[dict]:
+        """
+        Get all usage logs for a specific user.
+
+        Args:
+            user_id: User ID
+            start_date: Optional start date filter
+            end_date: Optional end date filter
+
+        Returns:
+            List of usage log dictionaries
+        """
+        async with self.session_factory() as session:
+            query = select(UsageLogModel).where(UsageLogModel.user_id == user_id)
+
+            if start_date:
+                query = query.where(UsageLogModel.created_at >= start_date)
+            if end_date:
+                query = query.where(UsageLogModel.created_at <= end_date)
+
+            query = query.order_by(UsageLogModel.created_at.desc())
+
+            result = await session.execute(query)
+            logs = result.scalars().all()
+
+            return [
+                {
+                    'id': log.id,
+                    'user_id': log.user_id,
+                    'processor_id': log.processor_id,
+                    'processor_name': log.processor_name,
+                    'document_type': log.document_type,
+                    'action_type': log.action_type,
+                    'input_type': log.input_type,
+                    'input_tokens': log.input_tokens,
+                    'output_tokens': log.output_tokens,
+                    'total_tokens': log.total_tokens,
+                    'cost': log.cost,
+                    'success': log.success,
+                    'error_message': log.error_message,
+                    'created_at': log.created_at
+                }
+                for log in logs
+            ]
+
+    async def get_usage_summary(
+        self,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None
+    ) -> dict:
+        """
+        Get aggregate usage statistics.
+
+        Args:
+            start_date: Optional start date filter
+            end_date: Optional end date filter
+
+        Returns:
+            Dictionary with aggregate stats
+        """
+        async with self.session_factory() as session:
+            query = select(UsageLogModel)
+
+            if start_date:
+                query = query.where(UsageLogModel.created_at >= start_date)
+            if end_date:
+                query = query.where(UsageLogModel.created_at <= end_date)
+
+            result = await session.execute(query)
+            logs = result.scalars().all()
+
+            total_docs = len(logs)
+            successful_docs = sum(1 for log in logs if log.success)
+            failed_docs = total_docs - successful_docs
+            total_tokens = sum(log.total_tokens for log in logs)
+            total_cost = sum(log.cost for log in logs)
+
+            # Count unique users
+            unique_users = len(set(log.user_id for log in logs))
+
+            # Count by action type
+            learn_count = sum(1 for log in logs if log.action_type == 'learn')
+            transform_count = sum(1 for log in logs if log.action_type == 'transform')
+
+            return {
+                'total_documents': total_docs,
+                'successful_documents': successful_docs,
+                'failed_documents': failed_docs,
+                'total_tokens': total_tokens,
+                'total_cost': total_cost,
+                'unique_users': unique_users,
+                'learn_count': learn_count,
+                'transform_count': transform_count
+            }
+
+    async def get_recent_usage(
+        self,
+        limit: int = 100,
+        offset: int = 0,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None
+    ) -> List[dict]:
+        """
+        Get recent usage logs with pagination.
+
+        Args:
+            limit: Maximum number of records to return
+            offset: Number of records to skip
+            start_date: Optional start date filter
+            end_date: Optional end date filter
+
+        Returns:
+            List of usage log dictionaries
+        """
+        async with self.session_factory() as session:
+            query = select(UsageLogModel)
+
+            if start_date:
+                query = query.where(UsageLogModel.created_at >= start_date)
+            if end_date:
+                query = query.where(UsageLogModel.created_at <= end_date)
+
+            query = query.order_by(UsageLogModel.created_at.desc())
+            query = query.limit(limit).offset(offset)
+
+            result = await session.execute(query)
+            logs = result.scalars().all()
+
+            return [
+                {
+                    'id': log.id,
+                    'user_id': log.user_id,
+                    'processor_id': log.processor_id,
+                    'processor_name': log.processor_name,
+                    'document_type': log.document_type,
+                    'action_type': log.action_type,
+                    'input_type': log.input_type,
+                    'input_tokens': log.input_tokens,
+                    'output_tokens': log.output_tokens,
+                    'total_tokens': log.total_tokens,
+                    'cost': log.cost,
+                    'success': log.success,
+                    'error_message': log.error_message,
+                    'created_at': log.created_at
+                }
+                for log in logs
+            ]
+
+    async def get_usage_by_user_summary(
+        self,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None
+    ) -> List[dict]:
+        """
+        Get per-user usage summary with aggregates.
+
+        Args:
+            start_date: Optional start date filter
+            end_date: Optional end date filter
+
+        Returns:
+            List of per-user summary dictionaries
+        """
+        async with self.session_factory() as session:
+            # Get all usage logs
+            query = select(UsageLogModel)
+
+            if start_date:
+                query = query.where(UsageLogModel.created_at >= start_date)
+            if end_date:
+                query = query.where(UsageLogModel.created_at <= end_date)
+
+            result = await session.execute(query)
+            logs = result.scalars().all()
+
+            # Group by user
+            user_stats = {}
+            for log in logs:
+                user_id = log.user_id
+                if user_id not in user_stats:
+                    user_stats[user_id] = {
+                        'user_id': user_id,
+                        'document_count': 0,
+                        'total_tokens': 0,
+                        'total_cost': 0.0,
+                        'last_active': log.created_at
+                    }
+
+                user_stats[user_id]['document_count'] += 1
+                user_stats[user_id]['total_tokens'] += log.total_tokens
+                user_stats[user_id]['total_cost'] += log.cost
+
+                # Update last_active if this is more recent
+                if log.created_at > user_stats[user_id]['last_active']:
+                    user_stats[user_id]['last_active'] = log.created_at
+
+            # Get user names
+            for user_id in user_stats.keys():
+                user = await self.get_user(user_id)
+                if user:
+                    user_stats[user_id]['user_name'] = user['name']
+                    user_stats[user_id]['user_email'] = user['email']
+                else:
+                    user_stats[user_id]['user_name'] = 'Unknown'
+                    user_stats[user_id]['user_email'] = 'unknown@example.com'
+
+            # Return sorted by total cost descending
+            return sorted(
+                user_stats.values(),
+                key=lambda x: x['total_cost'],
+                reverse=True
+            )
 
 
 # Global database instance

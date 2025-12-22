@@ -49,6 +49,225 @@ class SimpleTransformer:
         self.client = anthropic.Anthropic(api_key=self.api_key)
         self.examples = {}  # processor_id -> (input_images, ocr_text, output_text)
 
+    def detect_file_type(self, file_bytes: bytes, filename: str = None) -> str:
+        """
+        Detect file type from bytes and/or filename.
+
+        Args:
+            file_bytes: File content as bytes
+            filename: Optional filename with extension
+
+        Returns:
+            File type: 'pdf', 'docx', 'doc', 'xlsx', 'xls', 'csv', 'txt', 'image'
+        """
+        # Check filename extension first
+        if filename:
+            ext = filename.lower().split('.')[-1]
+            if ext == 'pdf':
+                return 'pdf'
+            elif ext in ['docx']:
+                return 'docx'
+            elif ext in ['doc']:
+                return 'doc'
+            elif ext in ['xlsx']:
+                return 'xlsx'
+            elif ext in ['xls']:
+                return 'xls'
+            elif ext == 'csv':
+                return 'csv'
+            elif ext == 'txt':
+                return 'txt'
+            elif ext in ['png', 'jpg', 'jpeg', 'gif', 'bmp']:
+                return 'image'
+
+        # Check magic bytes as fallback
+        if file_bytes[:4] == b'%PDF':
+            return 'pdf'
+        elif file_bytes[:2] == b'PK':  # ZIP-based formats (docx, xlsx)
+            if b'word/' in file_bytes[:1000]:
+                return 'docx'
+            elif b'xl/' in file_bytes[:1000]:
+                return 'xlsx'
+        elif file_bytes[:8] == b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1':  # OLE format (doc, xls)
+            return 'doc'  # Could be xls too, but we'll default to doc
+        elif file_bytes[:2] in [b'\xff\xd8', b'\x89P']:  # JPEG or PNG
+            return 'image'
+
+        # Default to text if unknown
+        return 'txt'
+
+    def extract_text_from_txt(self, file_bytes: bytes) -> str:
+        """Extract text from .txt file."""
+        try:
+            return file_bytes.decode('utf-8')
+        except UnicodeDecodeError:
+            # Try other encodings
+            for encoding in ['latin-1', 'cp1252', 'iso-8859-1']:
+                try:
+                    return file_bytes.decode(encoding)
+                except:
+                    continue
+            return file_bytes.decode('utf-8', errors='ignore')
+
+    def extract_text_from_docx(self, file_bytes: bytes) -> str:
+        """Extract text from .docx file."""
+        from docx import Document
+        from io import BytesIO
+
+        doc = Document(BytesIO(file_bytes))
+        text_parts = []
+
+        # Extract from paragraphs
+        for paragraph in doc.paragraphs:
+            text_parts.append(paragraph.text)
+
+        # Extract from tables
+        for table in doc.tables:
+            for row in table.rows:
+                row_text = '\t'.join(cell.text for cell in row.cells)
+                text_parts.append(row_text)
+
+        return '\n'.join(text_parts)
+
+    def extract_text_from_xlsx(self, file_bytes: bytes) -> str:
+        """Extract text from .xlsx file."""
+        import openpyxl
+        from io import BytesIO
+
+        wb = openpyxl.load_workbook(BytesIO(file_bytes), data_only=True)
+        text_parts = []
+
+        for sheet in wb.worksheets:
+            text_parts.append(f"Sheet: {sheet.title}")
+            for row in sheet.iter_rows(values_only=True):
+                row_text = '\t'.join(str(cell) if cell is not None else '' for cell in row)
+                if row_text.strip():
+                    text_parts.append(row_text)
+            text_parts.append('')  # Blank line between sheets
+
+        return '\n'.join(text_parts)
+
+    def extract_text_from_csv(self, file_bytes: bytes) -> str:
+        """Extract text from .csv file."""
+        import pandas as pd
+        from io import StringIO
+
+        # Try to decode
+        text = self.extract_text_from_txt(file_bytes)
+
+        # Parse CSV
+        try:
+            df = pd.read_csv(StringIO(text))
+            return df.to_string(index=False)
+        except:
+            # If pandas fails, return raw text
+            return text
+
+    def extract_text_from_xls(self, file_bytes: bytes) -> str:
+        """Extract text from .xls file (old Excel format)."""
+        import pandas as pd
+        from io import BytesIO
+
+        try:
+            # Read all sheets
+            excel_file = pd.ExcelFile(BytesIO(file_bytes))
+            text_parts = []
+
+            for sheet_name in excel_file.sheet_names:
+                df = pd.read_excel(excel_file, sheet_name=sheet_name)
+                text_parts.append(f"Sheet: {sheet_name}")
+                text_parts.append(df.to_string(index=False))
+                text_parts.append('')
+
+            return '\n'.join(text_parts)
+        except:
+            # Fallback: try to extract as binary
+            return self.extract_text_from_txt(file_bytes)
+
+    def image_to_base64(self, image_bytes: bytes) -> str:
+        """Convert image bytes to base64."""
+        return base64.b64encode(image_bytes).decode('utf-8')
+
+    def extract_from_image(self, image_bytes: bytes) -> tuple[List[str], str]:
+        """
+        Extract from image file (same as PDF: images for vision + OCR for text).
+
+        Args:
+            image_bytes: Image file bytes
+
+        Returns:
+            Tuple of (base64_images, ocr_text)
+        """
+        # Convert to base64 for vision
+        b64_image = self.image_to_base64(image_bytes)
+
+        # Extract OCR text
+        image = Image.open(BytesIO(image_bytes))
+        ocr_text = pytesseract.image_to_string(image)
+
+        logger.info(f"Extracted image: {len(ocr_text)} chars OCR")
+
+        return [b64_image], ocr_text
+
+    def extract_content_from_file(self, file_bytes: bytes, filename: str = None) -> tuple[List[str], str, str]:
+        """
+        Extract content from any supported file type.
+
+        Args:
+            file_bytes: File content as bytes
+            filename: Optional filename for type detection
+
+        Returns:
+            Tuple of (images_b64, text_content, file_type)
+            - images_b64: List of base64 images (for PDF/images, empty for text files)
+            - text_content: Extracted text
+            - file_type: Detected file type
+        """
+        file_type = self.detect_file_type(file_bytes, filename)
+        logger.info(f"Detected file type: {file_type}")
+
+        if file_type == 'pdf':
+            # PDF: images + OCR
+            images = self.pdf_to_images(file_bytes, dpi=150)
+            ocr_text = self.extract_ocr_text(file_bytes, dpi=300)
+            return images, ocr_text, file_type
+
+        elif file_type == 'image':
+            # Image: convert to b64 + OCR
+            images, ocr_text = self.extract_from_image(file_bytes)
+            return images, ocr_text, file_type
+
+        elif file_type == 'docx':
+            # Word: text only, no images
+            text = self.extract_text_from_docx(file_bytes)
+            return [], text, file_type
+
+        elif file_type == 'xlsx':
+            # Excel: text only
+            text = self.extract_text_from_xlsx(file_bytes)
+            return [], text, file_type
+
+        elif file_type == 'xls':
+            # Old Excel: text only
+            text = self.extract_text_from_xls(file_bytes)
+            return [], text, file_type
+
+        elif file_type == 'csv':
+            # CSV: text only
+            text = self.extract_text_from_csv(file_bytes)
+            return [], text, file_type
+
+        elif file_type == 'txt':
+            # Plain text
+            text = self.extract_text_from_txt(file_bytes)
+            return [], text, file_type
+
+        else:
+            # Unknown: try text extraction
+            logger.warning(f"Unknown file type, attempting text extraction")
+            text = self.extract_text_from_txt(file_bytes)
+            return [], text, 'txt'
+
     def pdf_to_images(self, pdf_bytes: bytes, dpi: int = 150) -> List[str]:
         """
         Convert PDF pages to base64-encoded PNG images.
@@ -133,62 +352,114 @@ class SimpleTransformer:
     def learn_from_example(
         self,
         processor_id: str,
-        input_pdf_bytes: bytes,
-        desired_output: str
+        input_file_bytes: bytes,
+        desired_output: str,
+        filename: str = None
     ) -> dict:
         """
-        Learn transformation from an example.
+        Learn transformation from an example file (any supported type).
 
-        Stores input images (for structure) + OCR text (for accuracy) + desired output.
+        Supports: PDF, Word (.docx, .doc), Excel (.xlsx, .xls), CSV, TXT, Images (.png, .jpg, .jpeg)
+
+        Stores input images (for structure) + text (for accuracy) + desired output.
 
         Generic approach - works for ANY document type.
 
         Args:
             processor_id: Unique ID for this processor
-            input_pdf_bytes: Example PDF bytes
+            input_file_bytes: Example file bytes
             desired_output: Desired formatted output
+            filename: Optional filename for type detection
 
         Returns:
             Dict with success status and stats
         """
         logger.info(f"Learning transformation for processor '{processor_id}'")
 
-        # Convert PDF to images (150 DPI for Claude vision - good balance)
-        input_images = self.pdf_to_images(input_pdf_bytes, dpi=150)
+        # Extract content from file (auto-detects type)
+        input_images, text_content, file_type = self.extract_content_from_file(
+            input_file_bytes,
+            filename
+        )
 
-        # Extract OCR text (300 DPI for accuracy)
-        ocr_text = self.extract_ocr_text(input_pdf_bytes, dpi=300)
+        logger.info(f"Detected file type: {file_type}, {len(input_images)} images, {len(text_content)} chars text")
 
         # Store the example
         self.examples[processor_id] = {
             'input_images': input_images,
-            'ocr_text': ocr_text,
-            'output_text': desired_output
+            'ocr_text': text_content,
+            'output_text': desired_output,
+            'source_type': file_type  # Track source type (pdf, docx, csv, etc.)
         }
 
-        logger.info(f"Learned example: {len(input_images)} pages, {len(ocr_text)} chars OCR, {len(desired_output)} chars output")
+        logger.info(f"Learned example: {len(input_images)} images, {len(text_content)} chars text, {len(desired_output)} chars output")
 
         return {
             'success': True,
             'processor_id': processor_id,
-            'input_length': len(input_images),  # Number of pages
-            'ocr_length': len(ocr_text),  # OCR text length
+            'input_length': len(input_images) if input_images else len(text_content),
+            'file_type': file_type,
+            'output_length': len(desired_output)
+        }
+
+    def learn_from_text(
+        self,
+        processor_id: str,
+        input_text: str,
+        desired_output: str
+    ) -> dict:
+        """
+        Learn transformation from pasted text (no PDF).
+
+        Stores input text + desired output (no images or OCR).
+        For text-based sources like hockey stats, website copy/paste, etc.
+
+        Generic approach - works for ANY document type.
+
+        Args:
+            processor_id: Unique ID for this processor
+            input_text: Example input text (pasted)
+            desired_output: Desired formatted output
+
+        Returns:
+            Dict with success status and stats
+        """
+        logger.info(f"Learning transformation for processor '{processor_id}' (text input)")
+
+        # Store the example (no images - indicates text source)
+        self.examples[processor_id] = {
+            'input_images': [],  # Empty - no PDF
+            'ocr_text': input_text,  # Use input text directly
+            'output_text': desired_output,
+            'source_type': 'text'  # Track source type
+        }
+
+        logger.info(f"Learned text example: {len(input_text)} chars input, {len(desired_output)} chars output")
+
+        return {
+            'success': True,
+            'processor_id': processor_id,
+            'input_length': len(input_text),
             'output_length': len(desired_output)
         }
 
     def transform(
         self,
         processor_id: str,
-        new_pdf_bytes: bytes
+        new_file_bytes: bytes,
+        filename: str = None
     ) -> dict:
         """
-        Transform a new PDF using learned example with vision + OCR.
+        Transform a new file using learned example.
+
+        Supports: PDF, Word (.docx, .doc), Excel (.xlsx, .xls), CSV, TXT, Images (.png, .jpg, .jpeg)
 
         Generic approach - works for ANY document type.
 
         Args:
             processor_id: ID of learned processor
-            new_pdf_bytes: New PDF to transform
+            new_file_bytes: New file to transform
+            filename: Optional filename for type detection
 
         Returns:
             Dict with transformed output
@@ -201,26 +472,37 @@ class SimpleTransformer:
         # Get the example
         example = self.examples[processor_id]
         example_images = example['input_images']
-        example_ocr_text = example['ocr_text']
+        example_text = example['ocr_text']
         example_output = example['output_text']
 
-        # Convert new PDF to images (150 DPI for Claude vision)
-        new_images = self.pdf_to_images(new_pdf_bytes, dpi=150)
-
-        # Extract OCR text from new PDF (300 DPI for accuracy)
-        new_ocr_text = self.extract_ocr_text(new_pdf_bytes, dpi=300)
-
-        # Build vision + OCR content for Claude
-        content = self._build_vision_ocr_content(
-            example_images=example_images,
-            example_ocr_text=example_ocr_text,
-            example_output=example_output,
-            new_images=new_images,
-            new_ocr_text=new_ocr_text
+        # Extract content from new file (auto-detects type)
+        new_images, new_text, file_type = self.extract_content_from_file(
+            new_file_bytes,
+            filename
         )
 
-        # Call Claude API (vision + text)
-        logger.info("Calling Claude with vision + OCR for transformation...")
+        logger.info(f"Detected file type: {file_type}, {len(new_images)} images, {len(new_text)} chars text")
+
+        # Build content for Claude based on whether we have images or text-only
+        if new_images and example_images:
+            # Vision + OCR mode (for PDFs and images)
+            content = self._build_vision_ocr_content(
+                example_images=example_images,
+                example_ocr_text=example_text,
+                example_output=example_output,
+                new_images=new_images,
+                new_ocr_text=new_text
+            )
+        else:
+            # Text-only mode (for Word, Excel, CSV, TXT)
+            content = self._build_text_only_prompt(
+                example_text=example_text,
+                example_output=example_output,
+                new_text=new_text
+            )
+
+        # Call Claude API
+        logger.info(f"Calling Claude for transformation ({file_type})...")
         response = self.client.messages.create(
             model="claude-sonnet-4-20250514",
             max_tokens=4000,
@@ -237,6 +519,8 @@ class SimpleTransformer:
         return {
             'success': True,
             'output': output_text,
+            'input_tokens': response.usage.input_tokens,
+            'output_tokens': response.usage.output_tokens,
             'tokens_used': response.usage.input_tokens + response.usage.output_tokens
         }
 
@@ -295,6 +579,8 @@ class SimpleTransformer:
         return {
             'success': True,
             'output': output_text,
+            'input_tokens': response.usage.input_tokens,
+            'output_tokens': response.usage.output_tokens,
             'tokens_used': response.usage.input_tokens + response.usage.output_tokens
         }
 
@@ -503,15 +789,18 @@ class SimpleTransformerDB:
         self,
         processor_id: str,
         name: str,
-        input_pdf_bytes: bytes,
-        desired_output: str
+        input_file_bytes: bytes,
+        desired_output: str,
+        user_id: Optional[str] = None,
+        filename: str = None
     ) -> dict:
-        """Learn and save to database."""
+        """Learn from any file type and save to database."""
         # Learn using simple transformer
         result = self.transformer.learn_from_example(
             processor_id=processor_id,
-            input_pdf_bytes=input_pdf_bytes,
-            desired_output=desired_output
+            input_file_bytes=input_file_bytes,
+            desired_output=desired_output,
+            filename=filename
         )
 
         # Save example to database
@@ -522,11 +811,12 @@ class SimpleTransformerDB:
         from src.processors.models import Processor
         import json
 
-        # Store images, OCR text, and output in template field as JSON
+        # Store images, OCR text, output, and source type in template field as JSON
         template_data = {
             'input_images': example['input_images'],
             'ocr_text': example['ocr_text'],
-            'output_text': example['output_text']
+            'output_text': example['output_text'],
+            'source_type': example.get('source_type', 'pdf')  # Default to PDF
         }
 
         processor = Processor(
@@ -546,19 +836,77 @@ class SimpleTransformerDB:
             processor_id=processor_id,
             name=name,
             document_type="simple_transform_vision_ocr",
-            processor_json=processor_json
+            processor_json=processor_json,
+            user_id=user_id
         )
 
-        logger.info(f"Saved simple transformer processor '{name}' to database")
+        logger.info(f"Saved simple transformer processor '{name}' (PDF) to database")
+
+        return result
+
+    async def learn_from_text(
+        self,
+        processor_id: str,
+        name: str,
+        input_text: str,
+        desired_output: str,
+        user_id: Optional[str] = None
+    ) -> dict:
+        """Learn from text and save to database."""
+        # Learn using simple transformer
+        result = self.transformer.learn_from_text(
+            processor_id=processor_id,
+            input_text=input_text,
+            desired_output=desired_output
+        )
+
+        # Save example to database
+        example = self.transformer.examples[processor_id]
+
+        # Store in database using existing schema
+        from src.processors.models import Processor
+        import json
+
+        # Store text, output, and source type in template field as JSON
+        template_data = {
+            'input_images': [],  # Empty for text sources
+            'ocr_text': example['ocr_text'],
+            'output_text': example['output_text'],
+            'source_type': example.get('source_type', 'text')  # Text source
+        }
+
+        processor = Processor(
+            id=processor_id,
+            name=name,
+            document_type="simple_transform_text",  # Different type for text-based
+            anchors=[],
+            regions=[],
+            extraction_ops=[],
+            template_id="simple_text",
+            template=json.dumps(template_data)
+        )
+
+        processor_json = processor.to_json()
+
+        await self.db.create_processor(
+            processor_id=processor_id,
+            name=name,
+            document_type="simple_transform_text",
+            processor_json=processor_json,
+            user_id=user_id
+        )
+
+        logger.info(f"Saved simple transformer processor '{name}' (text) to database")
 
         return result
 
     async def transform(
         self,
         processor_id: str,
-        new_pdf_bytes: bytes
+        new_file_bytes: bytes,
+        filename: str = None
     ) -> dict:
-        """Transform using saved processor."""
+        """Transform using saved processor (supports all file types)."""
         # Load example from database if not in memory
         if processor_id not in self.transformer.examples:
             processor_data = await self.db.get_processor(processor_id)
@@ -578,12 +926,13 @@ class SimpleTransformerDB:
             try:
                 template_data = json.loads(template)
 
-                # New format with OCR text
+                # New format with OCR text and source type
                 if 'input_images' in template_data and 'ocr_text' in template_data and 'output_text' in template_data:
                     self.transformer.examples[processor_id] = {
                         'input_images': template_data['input_images'],
                         'ocr_text': template_data['ocr_text'],
-                        'output_text': template_data['output_text']
+                        'output_text': template_data['output_text'],
+                        'source_type': template_data.get('source_type', 'pdf')  # Default to PDF for old processors
                     }
                 # Old vision-only format (backwards compatibility)
                 elif 'input_images' in template_data and 'output_text' in template_data:
@@ -595,7 +944,7 @@ class SimpleTransformerDB:
                     raise ValueError(f"Processor '{processor_id}' uses old text format. Please recreate with vision + OCR support.")
 
         # Transform
-        return self.transformer.transform(processor_id, new_pdf_bytes)
+        return self.transformer.transform(processor_id, new_file_bytes, filename)
 
     async def transform_text(
         self,
@@ -626,12 +975,13 @@ class SimpleTransformerDB:
             try:
                 template_data = json.loads(template)
 
-                # New format with OCR text
+                # New format with OCR text and source type
                 if 'input_images' in template_data and 'ocr_text' in template_data and 'output_text' in template_data:
                     self.transformer.examples[processor_id] = {
                         'input_images': template_data['input_images'],
                         'ocr_text': template_data['ocr_text'],
-                        'output_text': template_data['output_text']
+                        'output_text': template_data['output_text'],
+                        'source_type': template_data.get('source_type', 'text')  # Default to text for transform_text
                     }
                 # Old vision-only format (backwards compatibility)
                 elif 'input_images' in template_data and 'output_text' in template_data:

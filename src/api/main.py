@@ -15,16 +15,25 @@ from contextlib import asynccontextmanager
 from typing import Any, Optional
 
 import anthropic
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
 from pydantic import BaseModel
+import uuid
 
 from src.extractors.hybrid import HybridExtractor, VisionExtractor
 from src.schemas.common import DocumentType, ExtractionResult, RenderResult
 from src.templates.renderer import TemplateRenderer
 from src.db.database import get_database
 from src.learning.service import LearningService
+from src.auth import (
+    hash_password,
+    verify_password,
+    create_access_token,
+    get_current_user,
+    get_admin_user,
+    get_current_user_optional
+)
 
 # Configure logging
 logging.basicConfig(
@@ -149,18 +158,43 @@ class DocumentTypeInfo(BaseModel):
     category: str
 
 
+class LoginRequest(BaseModel):
+    """Login request model."""
+    email: str
+    password: str
+
+
+class RegisterRequest(BaseModel):
+    """User registration request model."""
+    email: str
+    password: str
+    name: str
+    role: str = "user"  # 'user' or 'admin'
+
+
+class UserResponse(BaseModel):
+    """User response model (no password)."""
+    id: str
+    email: str
+    name: str
+    role: str
+
+
+class LoginResponse(BaseModel):
+    """Login response with token and user info."""
+    token: str
+    user: UserResponse
+
+
 # =============================================================================
 # ENDPOINTS
 # =============================================================================
 
 @app.get("/")
 async def root():
-    """Root endpoint."""
-    return {
-        "service": "Quadd Extract API",
-        "version": "1.0.0",
-        "status": "running",
-    }
+    """Root endpoint - redirect to login page."""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/login")
 
 
 @app.get("/health")
@@ -168,6 +202,334 @@ async def health():
     """Health check endpoint."""
     return {"status": "healthy"}
 
+
+# =============================================================================
+# AUTHENTICATION ENDPOINTS
+# =============================================================================
+
+@app.post("/api/auth/login", response_model=LoginResponse)
+async def login(request: LoginRequest):
+    """
+    Authenticate user and return JWT token.
+
+    Validates email/password and returns a JWT token valid for 24 hours.
+    """
+    try:
+        # Get user by email
+        user = await app.state.db.get_user_by_email(request.email)
+
+        if not user:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid email or password"
+            )
+
+        # Verify password
+        if not verify_password(request.password, user['password_hash']):
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid email or password"
+            )
+
+        # Create access token
+        token = create_access_token(
+            user_id=user['id'],
+            email=user['email'],
+            role=user['role']
+        )
+
+        logger.info(f"User logged in: {user['email']}")
+
+        return LoginResponse(
+            token=token,
+            user=UserResponse(
+                id=user['id'],
+                email=user['email'],
+                name=user['name'],
+                role=user['role']
+            )
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Login failed: {e}")
+        raise HTTPException(status_code=500, detail="Login failed")
+
+
+@app.post("/api/auth/logout")
+async def logout(current_user: dict = Depends(get_current_user)):
+    """
+    Logout endpoint (token invalidation).
+
+    Note: With JWT, actual invalidation requires a token blacklist.
+    This endpoint exists for consistency and future enhancements.
+    Client should discard the token.
+    """
+    logger.info(f"User logged out: {current_user['email']}")
+    return {"message": "Logged out successfully"}
+
+
+@app.get("/api/auth/me", response_model=UserResponse)
+async def get_current_user_info(current_user: dict = Depends(get_current_user)):
+    """
+    Get current authenticated user information.
+
+    Requires valid JWT token in Authorization header.
+    """
+    # Get full user info from database
+    user = await app.state.db.get_user(current_user['user_id'])
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return UserResponse(
+        id=user['id'],
+        email=user['email'],
+        name=user['name'],
+        role=user['role']
+    )
+
+
+@app.post("/api/auth/register", response_model=UserResponse)
+async def register_user(
+    request: RegisterRequest,
+    admin_user: dict = Depends(get_admin_user)
+):
+    """
+    Register a new user (admin only).
+
+    Requires admin JWT token. Creates a new user account.
+    """
+    try:
+        # Validate role
+        if request.role not in ['user', 'admin']:
+            raise HTTPException(
+                status_code=400,
+                detail="Role must be 'user' or 'admin'"
+            )
+
+        # Hash password
+        password_hash = hash_password(request.password)
+
+        # Create user
+        user_id = str(uuid.uuid4())
+
+        await app.state.db.create_user(
+            user_id=user_id,
+            email=request.email,
+            password_hash=password_hash,
+            name=request.name,
+            role=request.role
+        )
+
+        logger.info(f"New user registered by admin {admin_user['email']}: {request.email}")
+
+        return UserResponse(
+            id=user_id,
+            email=request.email,
+            name=request.name,
+            role=request.role
+        )
+
+    except Exception as e:
+        logger.exception(f"User registration failed: {e}")
+        if "UNIQUE constraint failed" in str(e):
+            raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(status_code=500, detail="Registration failed")
+
+
+@app.get("/api/auth/users")
+async def list_users(admin_user: dict = Depends(get_admin_user)):
+    """
+    List all users with template counts (admin only).
+
+    Requires admin JWT token. Returns all users with their details and number of templates.
+    """
+    try:
+        # Get all users
+        users = await app.state.db.list_users()
+
+        # Add template count for each user
+        users_with_counts = []
+        for user in users:
+            template_count = await app.state.db.count_processors_by_user(user['id'])
+            users_with_counts.append({
+                'id': user['id'],
+                'email': user['email'],
+                'name': user['name'],
+                'role': user['role'],
+                'created_at': user['created_at'].isoformat() if user['created_at'] else None,
+                'template_count': template_count
+            })
+
+        return {
+            'status': 'success',
+            'users': users_with_counts
+        }
+
+    except Exception as e:
+        logger.exception(f"Failed to list users: {e}")
+        raise HTTPException(status_code=500, detail="Failed to list users")
+
+
+class UpdateUserRequest(BaseModel):
+    """Request model for updating user details."""
+    name: Optional[str] = None
+    email: Optional[str] = None
+    role: Optional[str] = None
+
+
+@app.put("/api/auth/users/{user_id}")
+async def update_user(
+    user_id: str,
+    request: UpdateUserRequest,
+    admin_user: dict = Depends(get_admin_user)
+):
+    """
+    Update user details (admin only).
+
+    Requires admin JWT token. Can update name, email, and/or role.
+    """
+    try:
+        # Validate role if provided
+        if request.role and request.role not in ['user', 'admin']:
+            raise HTTPException(
+                status_code=400,
+                detail="Role must be 'user' or 'admin'"
+            )
+
+        # Check if user exists
+        user = await app.state.db.get_user(user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Update user
+        success = await app.state.db.update_user(
+            user_id=user_id,
+            name=request.name,
+            email=request.email,
+            role=request.role
+        )
+
+        if not success:
+            raise HTTPException(status_code=400, detail="No changes made")
+
+        logger.info(f"User {user_id} updated by admin {admin_user['email']}")
+
+        # Return updated user
+        updated_user = await app.state.db.get_user(user_id)
+
+        return {
+            'status': 'success',
+            'user': {
+                'id': updated_user['id'],
+                'email': updated_user['email'],
+                'name': updated_user['name'],
+                'role': updated_user['role']
+            }
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Failed to update user: {e}")
+        if "UNIQUE constraint failed" in str(e):
+            raise HTTPException(status_code=400, detail="Email already in use")
+        raise HTTPException(status_code=500, detail="Failed to update user")
+
+
+class ResetPasswordRequest(BaseModel):
+    """Request model for resetting password."""
+    new_password: str
+
+
+@app.put("/api/auth/users/{user_id}/password")
+async def reset_user_password(
+    user_id: str,
+    request: ResetPasswordRequest,
+    admin_user: dict = Depends(get_admin_user)
+):
+    """
+    Reset user password (admin only).
+
+    Requires admin JWT token. Sets a new password for the specified user.
+    """
+    try:
+        # Check if user exists
+        user = await app.state.db.get_user(user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Hash new password
+        new_password_hash = hash_password(request.new_password)
+
+        # Update password
+        success = await app.state.db.update_user_password(user_id, new_password_hash)
+
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to update password")
+
+        logger.info(f"Password reset for user {user_id} by admin {admin_user['email']}")
+
+        return {
+            'status': 'success',
+            'message': 'Password updated successfully'
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Failed to reset password: {e}")
+        raise HTTPException(status_code=500, detail="Failed to reset password")
+
+
+@app.delete("/api/auth/users/{user_id}")
+async def delete_user(
+    user_id: str,
+    admin_user: dict = Depends(get_admin_user)
+):
+    """
+    Delete user (admin only).
+
+    Requires admin JWT token. Admins cannot delete themselves.
+    """
+    try:
+        # Check if trying to delete self
+        if user_id == admin_user['user_id']:
+            raise HTTPException(
+                status_code=400,
+                detail="You cannot delete your own account"
+            )
+
+        # Check if user exists
+        user = await app.state.db.get_user(user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Delete user
+        success = await app.state.db.delete_user(user_id)
+
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to delete user")
+
+        logger.info(f"User {user_id} ({user['email']}) deleted by admin {admin_user['email']}")
+
+        return {
+            'status': 'success',
+            'message': f"User {user['email']} deleted successfully"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Failed to delete user: {e}")
+        raise HTTPException(status_code=500, detail="Failed to delete user")
+
+
+# =============================================================================
+# FRONTEND & UTILITY ENDPOINTS
+# =============================================================================
 
 @app.get("/app", response_class=HTMLResponse)
 async def serve_app():
@@ -195,6 +557,66 @@ async def serve_app():
         <h1>Sports Stats Formatter</h1>
         <p>Frontend file not found. Please ensure frontend/index.html exists.</p>
         <p>API is running at: <a href="/docs">/docs</a></p>
+    </body>
+    </html>
+    """
+
+
+@app.get("/login", response_class=HTMLResponse)
+async def serve_login():
+    """Serve the login page."""
+    import os
+
+    # Try multiple paths to find the login page
+    possible_paths = [
+        os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "login.html"),
+        os.path.join(os.getcwd(), "frontend", "login.html"),
+        "frontend/login.html",
+    ]
+
+    for path in possible_paths:
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                return f.read()
+
+    # If no file found, return error
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head><title>Login - Universal Document Learning</title></head>
+    <body style="font-family: sans-serif; padding: 40px; text-align: center;">
+        <h1>Login Page Not Found</h1>
+        <p>Please ensure frontend/login.html exists.</p>
+    </body>
+    </html>
+    """
+
+
+@app.get("/help", response_class=HTMLResponse)
+async def serve_help():
+    """Serve the help page."""
+    import os
+
+    # Try multiple paths to find the help page
+    possible_paths = [
+        os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "help.html"),
+        os.path.join(os.getcwd(), "frontend", "help.html"),
+        "frontend/help.html",
+    ]
+
+    for path in possible_paths:
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                return f.read()
+
+    # If no file found, return error
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head><title>Help - Universal Document Learning</title></head>
+    <body style="font-family: sans-serif; padding: 40px; text-align: center;">
+        <h1>Help Page Not Found</h1>
+        <p>Please ensure frontend/help.html exists.</p>
     </body>
     </html>
     """
@@ -596,9 +1018,16 @@ async def extract_with_processor(
 
 
 @app.get("/api/processors")
-async def list_processors(document_type: Optional[str] = None):
+async def list_processors(
+    document_type: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
     """
-    List all learned processors.
+    List learned processors for current user.
+
+    Regular users see only their own templates.
+    Admin users see all templates.
+    Orphaned templates (user_id = NULL) are excluded.
 
     Optionally filter by document type.
     """
@@ -607,7 +1036,21 @@ async def list_processors(document_type: Optional[str] = None):
         raise HTTPException(status_code=500, detail="Database not initialized")
 
     try:
-        processors = await db.list_processors(document_type=document_type)
+        all_processors = await db.list_processors(document_type=document_type)
+
+        # Filter processors based on user role
+        if current_user['role'] == 'admin':
+            # Admins see all templates (but exclude orphaned ones)
+            filtered_processors = [
+                p for p in all_processors
+                if p.get('user_id') is not None  # Exclude orphaned templates
+            ]
+        else:
+            # Regular users see only their own templates
+            filtered_processors = [
+                p for p in all_processors
+                if p.get('user_id') == current_user['user_id']
+            ]
 
         return {
             "processors": [
@@ -622,7 +1065,7 @@ async def list_processors(document_type: Optional[str] = None):
                     "failure_count": p['failure_count'],
                     "last_used": p['last_used'].isoformat() if p['last_used'] else None
                 }
-                for p in processors
+                for p in filtered_processors
             ]
         }
 
@@ -712,29 +1155,45 @@ async def delete_processor(processor_id: str):
 async def simple_learn(
     name: str = Form(...),
     document_type: str = Form(...),
-    example_file: UploadFile = File(...),
+    example_file: Optional[UploadFile] = File(None),
+    source_text: Optional[str] = Form(None),
     desired_output: str = Form(...),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Learn transformation using Simple Transformer.
 
+    Requires authentication. Template will be associated with the current user.
+
+    Accepts EITHER:
+    - example_file (PDF upload) - for PDF sources
+    - source_text (pasted text) - for text sources (hockey stats, etc.)
+
     Simple LLM-based approach:
-    1. Extract raw text from PDF
+    1. Extract raw text from PDF or use pasted text
     2. Store example input/output pair
     3. Use LLM to transform new documents the same way
 
     No complex column mapping, anchors, or regions.
     """
     try:
+        # Validate input
+        if not example_file and not source_text:
+            raise HTTPException(
+                status_code=400,
+                detail="Please provide either a file upload (PDF, Word, Excel, TXT, CSV, or Image) or pasted source text"
+            )
+        if example_file and source_text:
+            raise HTTPException(
+                status_code=400,
+                detail="Please provide either a file upload OR pasted source text, not both"
+            )
+
         # Import here to avoid circular dependencies
         from src.simple_transformer import SimpleTransformerDB
-        import uuid
 
         # Generate processor ID
         processor_id = str(uuid.uuid4())
-
-        # Read file
-        pdf_bytes = await example_file.read()
 
         # Create simple transformer
         simple_transformer = SimpleTransformerDB(
@@ -742,15 +1201,56 @@ async def simple_learn(
             api_key=os.getenv("ANTHROPIC_API_KEY")
         )
 
-        # Learn from example
-        result = await simple_transformer.learn_from_example(
-            processor_id=processor_id,
-            name=name,
-            input_pdf_bytes=pdf_bytes,
-            desired_output=desired_output
-        )
+        # Learn from file or text
+        success = True
+        error_message = None
+        input_type = 'text'
 
-        logger.info(f"Simple transformer learned: {processor_id}")
+        try:
+            if example_file:
+                # File upload (PDF, Word, Excel, CSV, TXT, Image, etc.)
+                file_bytes = await example_file.read()
+                result = await simple_transformer.learn_from_example(
+                    processor_id=processor_id,
+                    name=name,
+                    input_file_bytes=file_bytes,
+                    desired_output=desired_output,
+                    user_id=current_user['user_id'],
+                    filename=example_file.filename
+                )
+                input_type = result.get('file_type', 'pdf')
+                logger.info(f"Simple transformer learned from {input_type} file: {processor_id}")
+            else:
+                # Text input (pasted)
+                result = await simple_transformer.learn_from_text(
+                    processor_id=processor_id,
+                    name=name,
+                    input_text=source_text,
+                    desired_output=desired_output,
+                    user_id=current_user['user_id']
+                )
+                input_type = 'text'
+                logger.info(f"Simple transformer learned from text: {processor_id}")
+        except Exception as e:
+            success = False
+            error_message = str(e)
+            raise
+
+        finally:
+            # Log usage for learning (currently no tokens used during learning, only during transform)
+            # This tracks template creation activity
+            await app.state.db.log_usage(
+                user_id=current_user['user_id'],
+                processor_id=processor_id,
+                processor_name=name,
+                document_type=document_type,
+                input_type=input_type,
+                input_tokens=0,  # Learning doesn't call Claude API yet
+                output_tokens=0,  # Only transform does
+                success=success,
+                error_message=error_message,
+                action_type='learn'
+            )
 
         return {
             "status": "success",
@@ -761,6 +1261,8 @@ async def simple_learn(
             "output_length": result['output_length']
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.exception(f"Simple learning failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -771,9 +1273,12 @@ async def simple_transform(
     processor_id: str = Form(...),
     file: Optional[UploadFile] = File(None),
     text: Optional[str] = Form(None),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Transform document using Simple Transformer.
+
+    Requires authentication. Tracks usage for analytics.
 
     Accepts EITHER:
     - file (PDF upload) - uses OCR + Vision
@@ -786,9 +1291,18 @@ async def simple_transform(
 
         # Validate input
         if not file and not text:
-            raise HTTPException(status_code=400, detail="Please provide either a PDF file or pasted text")
+            raise HTTPException(status_code=400, detail="Please provide either a file upload (PDF, Word, Excel, TXT, CSV, or Image) or pasted text")
         if file and text:
-            raise HTTPException(status_code=400, detail="Please provide either a PDF file OR pasted text, not both")
+            raise HTTPException(status_code=400, detail="Please provide either a file upload OR pasted text, not both")
+
+        # Get processor info for logging
+        processor_data = await app.state.db.get_processor(processor_id)
+        if not processor_data:
+            raise HTTPException(status_code=404, detail="Processor not found")
+
+        processor_name = processor_data['name']
+        document_type = processor_data['document_type']
+        input_type = 'text'
 
         # Create simple transformer
         simple_transformer = SimpleTransformerDB(
@@ -797,51 +1311,105 @@ async def simple_transform(
         )
 
         # Transform based on input type
-        if file:
-            # PDF upload - use OCR + Vision
-            pdf_bytes = await file.read()
-            result = await simple_transformer.transform(
-                processor_id=processor_id,
-                new_pdf_bytes=pdf_bytes
-            )
-            logger.info(f"Simple transformation (PDF) complete: {processor_id}")
-        else:
-            # Text input - use text directly
-            result = await simple_transformer.transform_text(
-                processor_id=processor_id,
-                new_text=text
-            )
-            logger.info(f"Simple transformation (text) complete: {processor_id}")
+        success = False
+        error_message = None
+        result = None
 
+        try:
+            if file:
+                # File upload (PDF, Word, Excel, CSV, TXT, Image, etc.)
+                file_bytes = await file.read()
+                result = await simple_transformer.transform(
+                    processor_id=processor_id,
+                    new_file_bytes=file_bytes,
+                    filename=file.filename
+                )
+                # Detect input type from filename
+                from src.simple_transformer import SimpleTransformer
+                temp_transformer = SimpleTransformer(api_key=os.getenv("ANTHROPIC_API_KEY"))
+                input_type = temp_transformer.detect_file_type(file_bytes, file.filename)
+                logger.info(f"Simple transformation ({input_type}) complete: {processor_id}")
+            else:
+                # Text input - use text directly
+                result = await simple_transformer.transform_text(
+                    processor_id=processor_id,
+                    new_text=text
+                )
+                logger.info(f"Simple transformation (text) complete: {processor_id}")
+
+            success = True
+
+        except Exception as transform_error:
+            success = False
+            error_message = str(transform_error)
+            raise
+
+        finally:
+            # Log usage (even if transformation failed)
+            if result:
+                # Extract token usage from Claude API response
+                input_tokens = result.get('input_tokens', 0)
+                output_tokens = result.get('output_tokens', 0)
+
+                await app.state.db.log_usage(
+                    user_id=current_user['user_id'],
+                    processor_id=processor_id,
+                    processor_name=processor_name,
+                    document_type=document_type,
+                    input_type=input_type,
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                    success=success,
+                    error_message=error_message,
+                    action_type='transform'
+                )
+
+        # Return output to user (NO token/cost info for regular users)
         return {
             "status": "success",
             "processor_id": processor_id,
-            "output": result['output'],
-            "tokens_used": result['tokens_used']
+            "output": result['output']
         }
 
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
         logger.exception(f"Simple transformation failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/simple/processors")
-async def list_simple_processors():
+async def list_simple_processors(current_user: dict = Depends(get_current_user)):
     """
-    List ALL processors (including old ones).
+    List processors for current user.
 
-    Returns list of all processors with id, name, type, and created date.
-    Allows users to manage and delete old processors.
+    Regular users see only their own templates.
+    Admin users see all templates (excluding orphaned ones).
+    Orphaned templates (user_id = NULL) are excluded for all users.
     """
     try:
-        # Get all processors from database (no filtering)
+        # Get all processors from database
         all_processors = await app.state.db.list_processors()
 
-        # Return all processors with their info
+        # Filter by user (admin sees all, regular users see only their own)
+        if current_user['role'] == 'admin':
+            # Admins see all templates (but exclude orphaned ones)
+            filtered_processors = [
+                proc for proc in all_processors
+                if proc.get('user_id') is not None  # Exclude orphaned templates
+            ]
+        else:
+            # Regular users see only their own processors
+            filtered_processors = [
+                proc for proc in all_processors
+                if proc.get('user_id') == current_user['user_id']
+            ]
+
+        # Return processors with their info
         processors_list = []
-        for proc in all_processors:
+        for proc in filtered_processors:
             processors_list.append({
                 'id': proc['id'],
                 'name': proc['name'],
@@ -851,7 +1419,7 @@ async def list_simple_processors():
                 'failure_count': proc.get('failure_count', 0)
             })
 
-        logger.info(f"Listed {len(processors_list)} processors (all types)")
+        logger.info(f"Listed {len(processors_list)} processors for user {current_user['email']}")
 
         return {
             "status": "success",
@@ -867,11 +1435,13 @@ async def list_simple_processors():
 async def update_simple_processor(
     processor_id: str,
     name: Optional[str] = Form(None),
-    desired_output: Optional[str] = Form(None)
+    desired_output: Optional[str] = Form(None),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Update a simple transformer processor's name or example output.
 
+    Requires authentication and ownership verification.
     Can update name, desired_output, or both.
     Does not require re-uploading the PDF.
     """
@@ -883,6 +1453,13 @@ async def update_simple_processor(
         processor_data = await app.state.db.get_processor(processor_id)
         if not processor_data:
             raise HTTPException(status_code=404, detail=f"Processor '{processor_id}' not found")
+
+        # Verify ownership (admin can update any, regular user only their own)
+        if current_user['role'] != 'admin' and processor_data.get('user_id') != current_user['user_id']:
+            raise HTTPException(
+                status_code=403,
+                detail="You don't have permission to update this template"
+            )
 
         processor = Processor.from_json(processor_data['processor_json'])
 
@@ -906,8 +1483,7 @@ async def update_simple_processor(
 
         await app.state.db.update_processor(
             processor_id=processor_id,
-            name=processor.name if name is not None else processor_data['name'],
-            document_type=processor.document_type,
+            name=processor.name if name is not None else None,
             processor_json=processor_json
         )
 
@@ -927,10 +1503,14 @@ async def update_simple_processor(
 
 
 @app.delete("/api/simple/processors/{processor_id}")
-async def delete_simple_processor(processor_id: str):
+async def delete_simple_processor(
+    processor_id: str,
+    current_user: dict = Depends(get_current_user)
+):
     """
     Delete a simple transformer processor.
 
+    Requires authentication and ownership verification.
     Permanently removes the processor from the database.
     """
     try:
@@ -939,10 +1519,17 @@ async def delete_simple_processor(processor_id: str):
         if not processor_data:
             raise HTTPException(status_code=404, detail=f"Processor '{processor_id}' not found")
 
+        # Verify ownership (admin can delete any, regular user only their own)
+        if current_user['role'] != 'admin' and processor_data.get('user_id') != current_user['user_id']:
+            raise HTTPException(
+                status_code=403,
+                detail="You don't have permission to delete this template"
+            )
+
         # Delete processor
         await app.state.db.delete_processor(processor_id)
 
-        logger.info(f"Deleted processor: {processor_id}")
+        logger.info(f"Deleted processor: {processor_id} by user {current_user['email']}")
 
         return {
             "status": "success",
@@ -959,27 +1546,38 @@ async def delete_simple_processor(processor_id: str):
 
 @app.post("/api/simple/processors/bulk-delete")
 async def bulk_delete_processors(
-    processor_ids: list[str]
+    processor_ids: list[str],
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Delete multiple processors at once.
 
-    Accepts a list of processor IDs and deletes them all.
+    Requires authentication. Users can only delete their own templates.
+    Admins can delete any templates.
     """
     try:
         deleted_count = 0
         failed_ids = []
+        permission_denied = []
 
         for processor_id in processor_ids:
             try:
-                # Check if processor exists
+                # Check if processor exists and verify ownership
                 processor_data = await app.state.db.get_processor(processor_id)
-                if processor_data:
-                    await app.state.db.delete_processor(processor_id)
-                    deleted_count += 1
-                    logger.info(f"Deleted processor: {processor_id}")
-                else:
+
+                if not processor_data:
                     failed_ids.append(processor_id)
+                    continue
+
+                # Verify ownership (admin can delete any, regular user only their own)
+                if current_user['role'] != 'admin' and processor_data.get('user_id') != current_user['user_id']:
+                    permission_denied.append(processor_id)
+                    continue
+
+                # Delete processor
+                await app.state.db.delete_processor(processor_id)
+                deleted_count += 1
+                logger.info(f"Deleted processor: {processor_id} by user {current_user['email']}")
             except Exception as e:
                 logger.error(f"Failed to delete processor {processor_id}: {e}")
                 failed_ids.append(processor_id)
@@ -988,12 +1586,315 @@ async def bulk_delete_processors(
             "status": "success",
             "deleted_count": deleted_count,
             "failed_count": len(failed_ids),
+            "permission_denied_count": len(permission_denied),
             "failed_ids": failed_ids,
+            "permission_denied_ids": permission_denied,
             "message": f"Deleted {deleted_count} processor(s)"
         }
 
     except Exception as e:
         logger.exception(f"Bulk delete failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =============================================================================
+# ADMIN ENDPOINTS - USAGE ANALYTICS
+# =============================================================================
+
+@app.get("/api/admin/usage/summary")
+async def get_usage_summary(
+    days: Optional[int] = None,
+    admin_user: dict = Depends(get_admin_user)
+):
+    """
+    Get aggregate usage statistics (admin only).
+
+    Optional query parameter:
+    - days: Filter to last N days (e.g., 1, 7, 30)
+    """
+    try:
+        from datetime import datetime, timedelta
+
+        # Calculate date range
+        start_date = None
+        end_date = None
+
+        if days:
+            end_date = datetime.utcnow()
+            start_date = end_date - timedelta(days=days)
+
+        # Get summary
+        summary = await app.state.db.get_usage_summary(
+            start_date=start_date,
+            end_date=end_date
+        )
+
+        return {
+            "status": "success",
+            "summary": summary,
+            "date_range": {
+                "start": start_date.isoformat() if start_date else None,
+                "end": end_date.isoformat() if end_date else None,
+                "days": days
+            }
+        }
+
+    except Exception as e:
+        logger.exception(f"Failed to get usage summary: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/admin/usage/by-user")
+async def get_usage_by_user(
+    days: Optional[int] = None,
+    admin_user: dict = Depends(get_admin_user)
+):
+    """
+    Get per-user usage breakdown (admin only).
+
+    Optional query parameter:
+    - days: Filter to last N days (e.g., 1, 7, 30)
+    """
+    try:
+        from datetime import datetime, timedelta
+
+        # Calculate date range
+        start_date = None
+        end_date = None
+
+        if days:
+            end_date = datetime.utcnow()
+            start_date = end_date - timedelta(days=days)
+
+        # Get per-user summary
+        user_summaries = await app.state.db.get_usage_by_user_summary(
+            start_date=start_date,
+            end_date=end_date
+        )
+
+        return {
+            "status": "success",
+            "users": user_summaries,
+            "date_range": {
+                "start": start_date.isoformat() if start_date else None,
+                "end": end_date.isoformat() if end_date else None,
+                "days": days
+            }
+        }
+
+    except Exception as e:
+        logger.exception(f"Failed to get usage by user: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/admin/usage/recent")
+async def get_recent_usage(
+    limit: int = 100,
+    offset: int = 0,
+    days: Optional[int] = None,
+    admin_user: dict = Depends(get_admin_user)
+):
+    """
+    Get recent usage activity log with pagination (admin only).
+
+    Query parameters:
+    - limit: Max records to return (default 100)
+    - offset: Number of records to skip (default 0)
+    - days: Filter to last N days (optional)
+    """
+    try:
+        from datetime import datetime, timedelta
+
+        # Calculate date range
+        start_date = None
+        end_date = None
+
+        if days:
+            end_date = datetime.utcnow()
+            start_date = end_date - timedelta(days=days)
+
+        # Get recent logs
+        logs = await app.state.db.get_recent_usage(
+            limit=limit,
+            offset=offset,
+            start_date=start_date,
+            end_date=end_date
+        )
+
+        # Add user names
+        logs_with_users = []
+        for log in logs:
+            user = await app.state.db.get_user(log['user_id'])
+            logs_with_users.append({
+                **log,
+                'user_name': user['name'] if user else 'Unknown',
+                'user_email': user['email'] if user else 'unknown@example.com',
+                'created_at': log['created_at'].isoformat() if log['created_at'] else None
+            })
+
+        return {
+            "status": "success",
+            "logs": logs_with_users,
+            "pagination": {
+                "limit": limit,
+                "offset": offset,
+                "count": len(logs_with_users)
+            },
+            "date_range": {
+                "start": start_date.isoformat() if start_date else None,
+                "end": end_date.isoformat() if end_date else None,
+                "days": days
+            }
+        }
+
+    except Exception as e:
+        logger.exception(f"Failed to get recent usage: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =============================================================================
+# ADMIN ENDPOINTS - ORPHANED TEMPLATE MANAGEMENT
+# =============================================================================
+
+@app.get("/api/admin/orphaned-templates")
+async def list_orphaned_templates(admin_user: dict = Depends(get_admin_user)):
+    """
+    List all orphaned templates (user_id = NULL).
+
+    Admin only. These are templates created before the auth system was added.
+    """
+    try:
+        all_processors = await app.state.db.list_processors()
+
+        # Filter for orphaned templates
+        orphaned = [
+            p for p in all_processors
+            if p.get('user_id') is None
+        ]
+
+        logger.info(f"Found {len(orphaned)} orphaned templates")
+
+        return {
+            "status": "success",
+            "count": len(orphaned),
+            "templates": [
+                {
+                    "id": p['id'],
+                    "name": p['name'],
+                    "document_type": p['document_type'],
+                    "created_at": p['created_at'].isoformat() if p['created_at'] else None,
+                    "success_count": p.get('success_count', 0),
+                    "failure_count": p.get('failure_count', 0)
+                }
+                for p in orphaned
+            ]
+        }
+
+    except Exception as e:
+        logger.exception(f"Failed to list orphaned templates: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/admin/orphaned-templates")
+async def delete_orphaned_templates(admin_user: dict = Depends(get_admin_user)):
+    """
+    Delete all orphaned templates (user_id = NULL).
+
+    Admin only. Permanently removes templates created before auth system.
+    """
+    try:
+        all_processors = await app.state.db.list_processors()
+
+        # Filter for orphaned templates
+        orphaned = [
+            p for p in all_processors
+            if p.get('user_id') is None
+        ]
+
+        deleted_count = 0
+        failed_ids = []
+
+        for proc in orphaned:
+            try:
+                await app.state.db.delete_processor(proc['id'])
+                deleted_count += 1
+                logger.info(f"Deleted orphaned template: {proc['id']} ({proc['name']})")
+            except Exception as e:
+                logger.error(f"Failed to delete orphaned template {proc['id']}: {e}")
+                failed_ids.append(proc['id'])
+
+        return {
+            "status": "success",
+            "deleted_count": deleted_count,
+            "failed_count": len(failed_ids),
+            "failed_ids": failed_ids,
+            "message": f"Deleted {deleted_count} orphaned template(s)"
+        }
+
+    except Exception as e:
+        logger.exception(f"Failed to delete orphaned templates: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class AssignTemplatesRequest(BaseModel):
+    """Request model for assigning orphaned templates."""
+    user_id: str
+
+
+@app.post("/api/admin/orphaned-templates/assign")
+async def assign_orphaned_templates(
+    request: AssignTemplatesRequest,
+    admin_user: dict = Depends(get_admin_user)
+):
+    """
+    Assign all orphaned templates to a specific user.
+
+    Admin only. Useful for assigning old templates to admin account.
+    """
+    try:
+        # Verify target user exists
+        target_user = await app.state.db.get_user(request.user_id)
+        if not target_user:
+            raise HTTPException(status_code=404, detail="Target user not found")
+
+        all_processors = await app.state.db.list_processors()
+
+        # Filter for orphaned templates
+        orphaned = [
+            p for p in all_processors
+            if p.get('user_id') is None
+        ]
+
+        assigned_count = 0
+        failed_ids = []
+
+        for proc in orphaned:
+            try:
+                # Update user_id in database
+                await app.state.db.update_processor(
+                    processor_id=proc['id'],
+                    user_id=request.user_id,
+                    increment_version=False  # Don't increment version for ownership change
+                )
+                assigned_count += 1
+                logger.info(f"Assigned orphaned template {proc['id']} ({proc['name']}) to user {request.user_id}")
+            except Exception as e:
+                logger.error(f"Failed to assign template {proc['id']}: {e}")
+                failed_ids.append(proc['id'])
+
+        return {
+            "status": "success",
+            "assigned_count": assigned_count,
+            "failed_count": len(failed_ids),
+            "failed_ids": failed_ids,
+            "target_user": target_user['email'],
+            "message": f"Assigned {assigned_count} template(s) to {target_user['email']}"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Failed to assign orphaned templates: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Help Guide - QUADD Document Transformer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.8;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            font-size: 16px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 40px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            color: #667eea;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            font-size: 1.2rem;
+            margin-bottom: 40px;
+        }
+
+        .section {
+            margin-bottom: 50px;
+            padding: 30px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            border-left: 5px solid #667eea;
+        }
+
+        h2 {
+            font-size: 1.8rem;
+            color: #333;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        h3 {
+            font-size: 1.3rem;
+            color: #555;
+            margin: 25px 0 15px 0;
+        }
+
+        p {
+            margin-bottom: 15px;
+            max-width: 700px;
+        }
+
+        .steps {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .step {
+            margin-bottom: 25px;
+            padding-left: 40px;
+            position: relative;
+        }
+
+        .step-number {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 30px;
+            height: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .example-box {
+            background: #e8f4f8;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .example-box strong {
+            color: #667eea;
+        }
+
+        .tip {
+            background: #fff9e6;
+            border-left: 4px solid #ffc107;
+            padding: 15px 20px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+
+        .tip strong {
+            color: #f57c00;
+        }
+
+        .problem {
+            background: #ffebee;
+            border-left: 4px solid #f44336;
+            padding: 15px 20px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+
+        .problem strong {
+            color: #c62828;
+        }
+
+        .arrow {
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        ul {
+            margin: 15px 0 15px 30px;
+        }
+
+        li {
+            margin-bottom: 10px;
+        }
+
+        .tab-explanation {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .tab-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .tab-card h4 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 30px;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+
+        .back-link:hover {
+            transform: translateY(-2px);
+        }
+
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+
+            .container {
+                box-shadow: none;
+                padding: 20px;
+            }
+
+            .back-link {
+                display: none;
+            }
+
+            .section {
+                page-break-inside: avoid;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            h2 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📚 How to Use the Document Transformer</h1>
+        <p class="subtitle">A simple guide for newspaper staff</p>
+
+        <!-- Section 1 -->
+        <div class="section">
+            <h2>🚀 Getting Started</h2>
+
+            <h3>Logging In</h3>
+            <p>When you first open the app, you'll see a login page. Just enter your email and password that your admin gave you, then click the blue "Login" button.</p>
+
+            <h3>What You See First</h3>
+            <p>After logging in, you'll see two big boxes. The left box is where you work, and the right box shows your results. At the top of the left box, you'll see tabs that let you switch between different tasks.</p>
+
+            <h3>The 3 Main Tabs</h3>
+            <div class="tab-explanation">
+                <div class="tab-card">
+                    <h4>📝 Learn New</h4>
+                    <p>This is where you create a new template. Think of it like teaching the computer your own special recipe!</p>
+                </div>
+                <div class="tab-card">
+                    <h4>⚡ Use Template</h4>
+                    <p>This is where you use a template you already created. Pick your template and transform new documents!</p>
+                </div>
+                <div class="tab-card">
+                    <h4>📋 Manage</h4>
+                    <p>This is where you can see all your templates, rename them, edit them, or delete ones you don't need anymore.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 2 -->
+        <div class="section">
+            <h2>✨ Creating Your First Template</h2>
+
+            <p><strong>What's a template?</strong> A template teaches the computer how YOU want your documents to look. It's like showing someone an example of the perfect way to do something!</p>
+
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <p><strong>Click on the "Learn New" tab</strong> at the top of the left box.</p>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <p><strong>Give your template a name.</strong> Pick something you'll remember, like "Hockey Stats" or "Basketball Scores".</p>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <p><strong>Type what kind of document this is.</strong> For example: "hockey", "basketball", or "honor_roll".</p>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <p><strong>Now for the important part!</strong> You have two choices:</p>
+                    <ul>
+                        <li><strong>Upload a PDF:</strong> If your documents are PDFs, click to upload one example PDF</li>
+                        <li><strong>OR paste text:</strong> If you copy data from a website, paste it in the big text box</li>
+                    </ul>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">5</div>
+                    <p><strong>Show the computer how you want it to look.</strong> In the "Desired Output Format" box, type or paste EXACTLY how you want the final result to appear.</p>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">6</div>
+                    <p><strong>Click the big "Learn from Example" button.</strong> This usually takes 30-60 seconds. You'll see a loading message.</p>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">7</div>
+                    <p><strong>Success!</strong> When it's done, you'll see a green message saying it worked. Your template is ready to use!</p>
+                </div>
+            </div>
+
+            <div class="example-box">
+                <strong>Example: Hockey Stats</strong><br>
+                Let's say you copy hockey stats from a website that look messy like this:<br><br>
+                <code>Player    G  A  PTS<br>
+                Smith     2  3   5<br>
+                Johnson   1  1   2</code><br><br>
+                In the "Desired Output" box, type how you want it to look in your article:<br><br>
+                <code>Top Scorers:<br>
+                - Smith: 5 points (2 goals, 3 assists)<br>
+                - Johnson: 2 points (1 goal, 1 assist)</code>
+            </div>
+        </div>
+
+        <!-- Section 3 -->
+        <div class="section">
+            <h2>⚡ Using a Template</h2>
+
+            <p>Once you've created a template, using it is super easy!</p>
+
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <p><strong>Click the "Use Template" tab</strong> at the top.</p>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <p><strong>Pick your template from the dropdown list.</strong> Click the dropdown and select the template you want to use.</p>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <p><strong>Give it your new document.</strong> Just like when you created the template:</p>
+                    <ul>
+                        <li>If it's a PDF template, upload your new PDF</li>
+                        <li>If it's a text template, paste your new text</li>
+                    </ul>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <p><strong>Click "Extract Data".</strong> Wait a few seconds while the magic happens!</p>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">5</div>
+                    <p><strong>See your results!</strong> The formatted output appears in the right box. Click "Copy Output" to copy it, then paste it wherever you need it!</p>
+                </div>
+            </div>
+
+            <div class="tip">
+                <strong>💡 Tip:</strong> You can use the same template over and over again for the same type of document. Create it once, use it forever!
+            </div>
+        </div>
+
+        <!-- Section 4 -->
+        <div class="section">
+            <h2>📋 Managing Templates</h2>
+
+            <h3>Viewing Your Templates</h3>
+            <p>Click the "Manage" tab to see all your templates in one place. Each template shows its name, when it was created, and how many times you've used it.</p>
+
+            <h3>Renaming a Template</h3>
+            <p>Click the "✏️ Rename" button next to the template. Type the new name and click Save. Easy!</p>
+
+            <h3>Editing a Template's Example</h3>
+            <p>If your template isn't working quite right, you can fix it! Click "Edit Example Output" and change how you want the output to look. The computer will learn the new way you showed it.</p>
+
+            <h3>Deleting Templates</h3>
+            <p>Don't need a template anymore? Click the red "🗑️ Delete" button. It will ask you to confirm - just click OK if you're sure!</p>
+
+            <div class="tip">
+                <strong>💡 Tip:</strong> You can also delete multiple templates at once. Check the boxes next to the templates you want to delete, then click "Delete Selected".
+            </div>
+        </div>
+
+        <!-- Section 5 -->
+        <div class="section">
+            <h2>🎯 Tips and Tricks</h2>
+
+            <div class="tip">
+                <strong>✅ The better your example, the better the output.</strong><br>
+                When creating a template, make your "Desired Output" example as detailed and complete as possible. Show the computer EXACTLY what you want!
+            </div>
+
+            <div class="tip">
+                <strong>✅ If output looks wrong, edit your template.</strong><br>
+                Go to "Manage", click "Edit Example Output" on that template, and make your example more specific. Then try again!
+            </div>
+
+            <div class="tip">
+                <strong>✅ Each template is for ONE type of document.</strong><br>
+                Make a separate template for each different type of document you work with. For example, one for hockey stats, another for basketball scores, another for honor rolls.
+            </div>
+
+            <div class="tip">
+                <strong>✅ Give templates clear names.</strong><br>
+                Use names like "Hockey Box Scores" instead of "Template1". You'll thank yourself later when you have lots of templates!
+            </div>
+
+            <div class="tip">
+                <strong>✅ PDF or Text? Stick with one!</strong><br>
+                If you created a template with a PDF, always use PDFs with that template. If you created it with pasted text, always paste text. Don't mix them!
+            </div>
+        </div>
+
+        <!-- Section 6 -->
+        <div class="section">
+            <h2>🆘 Common Problems</h2>
+
+            <div class="problem">
+                <strong>Problem:</strong> "I can't see my templates in the dropdown!"<br>
+                <span class="arrow">→</span> Make sure you're logged in. If you are, try clicking the Refresh button. If you still don't see them, you might not have created any templates yet - go to "Learn New" to create one!
+            </div>
+
+            <div class="problem">
+                <strong>Problem:</strong> "The output looks wrong or messy!"<br>
+                <span class="arrow">→</span> Go to "Manage", find your template, and click "Edit Example Output". Make your example output more specific and detailed. Show the computer exactly what you want!
+            </div>
+
+            <div class="problem">
+                <strong>Problem:</strong> "It says 'Learning failed' or 'Extraction failed'!"<br>
+                <span class="arrow">→</span> This usually means the document is very different from your example. Make sure you're using the right template for the right type of document. If it keeps happening, try creating a new template with a better example.
+            </div>
+
+            <div class="problem">
+                <strong>Problem:</strong> "I forgot my password!"<br>
+                <span class="arrow">→</span> Contact your administrator (the person who created your account). They can reset your password for you.
+            </div>
+
+            <div class="problem">
+                <strong>Problem:</strong> "It's taking forever to process!"<br>
+                <span class="arrow">→</span> Learning new templates and extracting data takes 30-60 seconds - this is normal! Make sure you have a good internet connection and just be patient. You'll see a loading message while it works.
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 40px; padding-top: 30px; border-top: 2px solid #e0e0e0;">
+            <p style="color: #666; margin-bottom: 20px;">Still need help? Ask your administrator for assistance!</p>
+            <a href="/" class="back-link">← Back to App</a>
+        </div>
+    </div>
+</body>
+</html>
