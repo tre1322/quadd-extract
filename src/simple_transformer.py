@@ -635,11 +635,24 @@ Transform this NEW text in the SAME WAY as the example above.
 
 IMPORTANT RULES (generic - apply to ANY document type):
 
-1. **Include ALL items, even zeros** - If an item has all zero values (0-0-0), still include it in the output. Do not drop items just because they have zero values.
+1. **Detect Entity Filtering** - Analyze if the example output shows FILTERED/SELECTIVE data:
+   - Does the example input contain MANY entities (teams, schools, companies, people, etc.)?
+   - Does the example output show FEWER entities than the input?
+   - If YES: The user wants entity-based filtering. Identify which entities are shown in the example output.
+   - Apply the SAME filtering pattern: Show only items related to those entity types.
+   - Maintain the SAME PERSPECTIVE: If the example shows results from one entity's viewpoint, do the same for the new document.
 
-2. **Detect threshold values** - Look for values that meet specific thresholds (e.g., if the example shows "Fouled out" for certain values, detect when new items meet that same threshold). Check the example to see how threshold detection is demonstrated.
+2. **Include ALL items, even zeros** - If an item has all zero values (0-0-0), still include it in the output. Do not drop items just because they have zero values.
 
-3. **Complete extraction** - Extract every item from the document, not just the ones with non-zero values. Completeness is more important than brevity.
+3. **Detect threshold values** - Look for values that meet specific thresholds (e.g., if the example shows "Fouled out" for certain values, detect when new items meet that same threshold). Check the example to see how threshold detection is demonstrated.
+
+4. **Complete extraction** - Within the identified scope (all items, or filtered items), extract EVERY item. Completeness is more important than brevity.
+
+5. **Match the Pattern** - Pay close attention to:
+   - How names are formatted (full names, last names only, abbreviations)
+   - How multiple items for the same entity are grouped
+   - The sequence and structure of information
+   - Any headers, labels, or grouping used
 
 Provide ONLY the transformed output in the same format as the example.
 Extract ALL details accurately - names, numbers, statistics, etc.
@@ -753,11 +766,31 @@ Use the OCR TEXT for accurate names, numbers, and values.
 
 IMPORTANT RULES (generic - apply to ANY document type):
 
-1. **Include ALL items, even zeros** - If an item has all zero values (0-0-0), still include it in the output. Do not drop items just because they have zero values.
+1. **Detect Entity Filtering** - Analyze if the example output shows FILTERED/SELECTIVE data:
+   - Does the example input contain MANY entities (teams, schools, companies, people, etc.)?
+   - Does the example output show FEWER entities than the input?
+   - If YES: The user wants entity-based filtering. Identify which entities are shown in the example output.
+   - Apply the SAME filtering pattern: Show only items related to those entity types.
+   - Maintain the SAME PERSPECTIVE: If the example shows results from one entity's viewpoint, do the same for the new document.
 
-2. **Detect threshold values** - Look for values that meet specific thresholds (e.g., if the example shows "Fouled out" for certain values, detect when new items meet that same threshold). Check the example to see how threshold detection is demonstrated.
+   EXAMPLES of entity filtering patterns:
+   - Tournament brackets → Output shows only 1-2 teams from a field of 20 teams
+   - Honor roll → Output shows only 1 school district from a list of many districts
+   - Company report → Output shows only 1 department from a multi-department document
+   - ANY document where output is subset of input based on entity membership
 
-3. **Complete extraction** - Extract every item from the document, not just the ones with non-zero values. Completeness is more important than brevity.
+2. **Include ALL items, even zeros** - If an item has all zero values (0-0-0), still include it in the output. Do not drop items just because they have zero values.
+
+3. **Detect threshold values** - Look for values that meet specific thresholds (e.g., if the example shows "Fouled out" for certain values, detect when new items meet that same threshold). Check the example to see how threshold detection is demonstrated.
+
+4. **Complete extraction** - Within the identified scope (all items, or filtered items), extract EVERY item. Completeness is more important than brevity.
+
+5. **Match the Pattern** - Pay close attention to:
+   - How names are formatted (full names, last names only, abbreviations)
+   - How multiple items for the same entity are grouped
+   - The sequence and structure of information
+   - Any headers, labels, or grouping used
+   - The perspective (from which entity's viewpoint is the output written?)
 
 Provide ONLY the transformed output in the same format as the example.
 Extract ALL details accurately - names, numbers, statistics, etc.
