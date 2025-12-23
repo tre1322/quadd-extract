@@ -2,4 +2,4 @@
 aptPkgs = ["libgl1", "libglib2.0-0", "tesseract-ocr", "poppler-utils"]
 
 [start]
-cmd = "python init_auth.py && uvicorn src.api.main:app --host 0.0.0.0 --port ${PORT:-8000}"
+cmd = "python init_auth.py; uvicorn src.api.main:app --host 0.0.0.0 --port ${PORT:-8000}"
