@@ -719,6 +719,7 @@
                 <div class="tab-buttons">
                     <button class="tab-btn active" data-tab="learn">Learn New</button>
                     <button class="tab-btn" data-tab="extract">Use Template</button>
+                    <button class="tab-btn" data-tab="tournament">Tournament</button>
                     <button class="tab-btn" data-tab="manage">Manage</button>
                     <button class="tab-btn" data-tab="admin" id="admin-tab-btn" style="display: none;">Admin</button>
                     <button class="tab-btn" data-tab="usage" id="usage-tab-btn" style="display: none;">Usage</button>
@@ -819,6 +820,34 @@ Johnson   1  1   2" rows="8"></textarea>
 
                     <button class="btn btn-primary" id="extract-btn">
                         ⚡ Extract Data
+                    </button>
+                </div>
+
+                <!-- Tournament Tab -->
+                <div id="tournament-tab" class="tab-content">
+                    <div class="form-group">
+                        <label>Upload Tournament Brackets</label>
+                        <div class="file-upload" id="tournament-upload">
+                            <input type="file" id="tournament-file" accept=".pdf,image/*" multiple>
+                            <div>🏆 Click to upload PDF or images</div>
+                            <div class="file-name" style="display: none;"></div>
+                        </div>
+                        <div class="help-text">Upload bracket images/PDFs (one per weight class)</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Teams to include (one per line)</label>
+                        <textarea id="tournament-teams" placeholder="Enter team names, e.g.:
+Windom-Mountain Lake
+Albert Lea
+Martin County
+
+Partial matches work - 'Albert Lea' will match 'Albert Lea Area'" rows="6"></textarea>
+                        <div class="help-text">💡 Partial matches work - 'Albert Lea' will match 'Albert Lea Area'</div>
+                    </div>
+
+                    <button class="btn btn-primary" id="tournament-btn">
+                        🏆 Extract Tournament Results
                     </button>
                 </div>
 
@@ -1200,6 +1229,26 @@ Johnson   1  1   2" rows="8"></textarea>
         setupFileUpload('example-upload', 'example-file');
         setupFileUpload('extract-upload', 'extract-file');
 
+        // Tournament file upload (supports multiple files)
+        const tournamentUploadArea = document.getElementById('tournament-upload');
+        const tournamentFileInput = document.getElementById('tournament-file');
+        const tournamentFileName = tournamentUploadArea.querySelector('.file-name');
+
+        tournamentUploadArea.addEventListener('click', () => tournamentFileInput.click());
+
+        tournamentFileInput.addEventListener('change', (e) => {
+            const files = e.target.files;
+            if (files.length > 0) {
+                if (files.length === 1) {
+                    tournamentFileName.textContent = `Selected: ${files[0].name}`;
+                } else {
+                    tournamentFileName.textContent = `Selected: ${files.length} files`;
+                }
+                tournamentFileName.style.display = 'block';
+                tournamentUploadArea.classList.add('has-file');
+            }
+        });
+
         // Status message helpers
         function showStatus(message, type = 'info') {
             const status = document.getElementById('status');
@@ -1428,6 +1477,92 @@ This template will transform new documents the same way using AI.`;
             } catch (error) {
                 console.error('Transformation error:', error);
                 showStatus(`Transformation failed: ${error.message}`, 'error');
+                setOutput(`Error: ${error.message}\n\nCheck the console for more details.`);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        });
+
+        // Tournament button
+        document.getElementById('tournament-btn').addEventListener('click', async () => {
+            const files = document.getElementById('tournament-file').files;
+            const teamsText = document.getElementById('tournament-teams').value.trim();
+
+            // Validation
+            if (files.length === 0) {
+                showStatus('Please upload tournament brackets', 'error');
+                return;
+            }
+            if (!teamsText) {
+                showStatus('Please enter at least one team name', 'error');
+                return;
+            }
+
+            // Parse team names (one per line)
+            const teams = teamsText.split('\n').map(t => t.trim()).filter(t => t.length > 0);
+
+            if (teams.length === 0) {
+                showStatus('Please enter at least one team name', 'error');
+                return;
+            }
+
+            // Create form data
+            const formData = new FormData();
+
+            // Add all files
+            for (let i = 0; i < files.length; i++) {
+                formData.append('files', files[i]);
+            }
+
+            // Add teams as JSON array
+            formData.append('teams', JSON.stringify(teams));
+
+            // Disable button and show loading
+            const btn = document.getElementById('tournament-btn');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Extracting Tournament Results...';
+            showStatus('Analyzing tournament brackets... This may take 30-60 seconds.', 'info');
+            clearOutput();
+
+            try {
+                const token = getAuthToken();
+                const response = await fetch(`${API_BASE}/api/extract/tournament`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.status === 401) {
+                    handleUnauthorized();
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Tournament extraction failed');
+                }
+
+                if (data.success) {
+                    showStatus('Tournament results extracted successfully!', 'success');
+                    setOutput(data.results);
+
+                    // Clear form after successful extraction
+                    document.getElementById('tournament-teams').value = '';
+                    document.getElementById('tournament-file').value = '';
+                    tournamentFileName.style.display = 'none';
+                    tournamentUploadArea.classList.remove('has-file');
+                } else {
+                    throw new Error(data.error || 'Tournament extraction failed');
+                }
+
+            } catch (error) {
+                console.error('Tournament extraction error:', error);
+                showStatus(`Tournament extraction failed: ${error.message}`, 'error');
                 setOutput(`Error: ${error.message}\n\nCheck the console for more details.`);
             } finally {
                 btn.disabled = false;

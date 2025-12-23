@@ -12,7 +12,8 @@ load_dotenv()
 import logging
 import os
 from contextlib import asynccontextmanager
-from typing import Any, Optional
+from typing import Any, Optional, List
+import json
 
 import anthropic
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile, Depends
@@ -857,6 +858,191 @@ async def extract_raw(
         
     except Exception as e:
         logger.exception(f"Extraction error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/extract/tournament")
+async def extract_tournament(
+    files: List[UploadFile] = File(...),
+    teams: str = Form(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Extract tournament results filtered by team names.
+
+    For wrestling tournaments - analyzes bracket images/PDFs and extracts
+    results for specified teams only using fuzzy team name matching.
+
+    Args:
+        files: List of bracket images or PDFs (one per weight class)
+        teams: JSON array of team names to filter for
+        current_user: Authenticated user
+
+    Returns:
+        Formatted box scores for the specified teams
+    """
+    # Check if extractor is available
+    if app.state.extractor is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Extraction service unavailable. ANTHROPIC_API_KEY not configured."
+        )
+
+    try:
+        # Parse teams JSON
+        team_names = json.loads(teams)
+
+        if not team_names or len(team_names) == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="At least one team name is required"
+            )
+
+        logger.info(f"Tournament extraction for teams: {team_names}")
+        logger.info(f"Processing {len(files)} bracket file(s)")
+
+        # Use VisionExtractor for bracket analysis
+        extractor: HybridExtractor = app.state.extractor
+        vision_extractor = VisionExtractor(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
+        # Build the extraction prompt with team filtering
+        team_list = ", ".join([f"'{t}'" for t in team_names])
+
+        extraction_prompt = f"""You are analyzing wrestling tournament bracket images.
+
+TEAMS TO INCLUDE: {team_list}
+
+TASK: Extract match results for ONLY wrestlers from the specified teams.
+
+FUZZY MATCHING RULES:
+- Match team names flexibly - if the user specifies 'Albert Lea', include wrestlers whose team contains 'Albert Lea' (e.g., 'Albert Lea Area')
+- Common abbreviations should match (e.g., 'WML' = 'Windom-Mountain Lake', 'FMCC' = 'Fairmont Martin County Central')
+- Partial matches are OK - 'Martin County' should match 'Martin County Red Bulls'
+
+OUTPUT FORMAT:
+Group results by team name (use full team name from bracket, not user's abbreviated input).
+
+For each team:
+TEAM NAME (all caps)
+Weight: Wrestler Name (Team Abbr) [match result]; [match result]; ... [Placement]
+
+Match result format examples:
+- "dec. Opponent Name (OpponentTeam) 5-3" (decision)
+- "pin Opponent Name (OpponentTeam) 2:45" (pin with time)
+- "TF Opponent Name (OpponentTeam) 18-3" (technical fall)
+- "maj. dec. Opponent Name (OpponentTeam) 12-4" (major decision)
+- "forfeit" or "bye"
+
+Placement format: "First place", "Second place", "Third place", "Fourth place", etc.
+
+EXAMPLE OUTPUT:
+WINDOM-MOUNTAIN LAKE
+152: Kameron Koerner (WML) TF Blake Stancek (Hutch) 19-4; Koerner pin Lucas Kuball (FMCC) 4:32; Koerner dec. Charger Erlandson (AE) 4-1; Koerner dec. Mason Hansen (Paynesville) 5-4; Koerner pin Lucas Kuball (FMCC) 3:55. Third place
+
+106: Dylan Smith (WML) dec. John Jones (FMCC) 6-2; Smith pin Mike Wilson (JCC) 1:45. First place
+
+ALBERT LEA AREA
+145: Mike Johnson (ALA) bye; Johnson pin Tom Anderson (Marshall) 3:21; Johnson lost to Jake Wilson (Windom) 7-4. Second place
+
+IMPORTANT:
+- Only include wrestlers from the specified teams
+- Use the wrestler's LAST NAME for subsequent match results in the same line
+- Include ALL matches leading to their final placement
+- List matches chronologically (first match to last)
+- Be precise with match scores and times
+
+Analyze the bracket images and extract the results:"""
+
+        # Combine all files for vision analysis
+        all_results = []
+        total_tokens = 0
+
+        for file in files:
+            content = await file.read()
+            filename = file.filename or "bracket.pdf"
+
+            logger.info(f"Processing {filename}...")
+
+            # Extract using vision
+            extraction = await vision_extractor.extract_from_pdf(
+                content,
+                filename,
+                extraction_prompt
+            )
+
+            if extraction.success and extraction.data.get('extracted_text'):
+                all_results.append(extraction.data['extracted_text'])
+                total_tokens += extraction.tokens_used or 0
+            else:
+                logger.warning(f"Failed to extract from {filename}: {extraction.errors}")
+
+        if not all_results:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to extract data from tournament brackets. Please check if the images are clear and contain bracket information."
+            )
+
+        # Combine all results
+        combined_results = "\n\n".join(all_results)
+
+        # If we got fragmented results, ask Claude to consolidate and deduplicate
+        if len(files) > 1:
+            consolidation_prompt = f"""The following are wrestling tournament results extracted from multiple bracket images for these teams: {team_list}
+
+Results may be fragmented or duplicated across images. Please:
+1. Consolidate all results for each team
+2. Remove duplicates (same wrestler, same weight class)
+3. Ensure proper formatting with team name headers
+4. Sort by team name, then by weight class (ascending)
+
+Current results:
+
+{combined_results}
+
+Provide the consolidated, deduplicated results:"""
+
+            # Use a simple Claude call to consolidate
+            client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+            consolidation_response = client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=4096,
+                messages=[{
+                    "role": "user",
+                    "content": consolidation_prompt
+                }]
+            )
+
+            final_results = consolidation_response.content[0].text
+            total_tokens += consolidation_response.usage.input_tokens + consolidation_response.usage.output_tokens
+        else:
+            final_results = combined_results
+
+        logger.info(f"Tournament extraction successful. Total tokens used: {total_tokens}")
+
+        return {
+            "success": True,
+            "results": final_results,
+            "teams": team_names,
+            "files_processed": len(files),
+            "tokens_used": total_tokens
+        }
+
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid teams JSON format")
+    except anthropic.AuthenticationError as e:
+        logger.error(f"API authentication failed: {e}")
+        raise HTTPException(
+            status_code=401,
+            detail="API key is invalid or expired."
+        )
+    except anthropic.APIConnectionError as e:
+        logger.error(f"API connection failed: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail="Cannot connect to Anthropic API. Check your internet connection."
+        )
+    except Exception as e:
+        logger.exception(f"Tournament extraction error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
