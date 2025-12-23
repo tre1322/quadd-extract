@@ -1,4 +1,73 @@
-# Railway Deployment Issues - Fixed
+# Fix Summary - Tournament Feature Charter Compliance
+
+## Critical Issues Fixed
+
+### Issue 1: Bug - extract_from_pdf Method Doesn't Exist ✅ FIXED
+
+**Problem**: The /api/extract/tournament endpoint tried to call:
+```python
+extraction = await vision_extractor.extract_from_pdf(content, filename, extraction_prompt)
+```
+But `VisionExtractor` has no `extract_from_pdf()` method.
+
+**Fix**: Replaced with SimpleTransformerDB.transform(), which is the correct generic method:
+```python
+result = await simple_transformer.transform(
+    processor_id=processor_id,
+    new_file_bytes=file_bytes,
+    filename=filename
+)
+```
+
+**Location**: src/api/main.py, lines 937-941
+
+---
+
+### Issue 2: Charter Violation - Wrestling-Specific Code ✅ FIXED
+
+**Problem**: The Tournament feature violated the PROJECT CHARTER by containing:
+- Wrestling-specific terminology ("pin", "dec", "TF", "technical fall")
+- Hardcoded bracket parsing logic
+- Sport-specific output format instructions
+- Would require code changes for other sports
+
+**Charter Violations Found**:
+```python
+# ❌ Wrestling-specific prompt
+extraction_prompt = f"""You are analyzing wrestling tournament bracket images.
+
+Match result format examples:
+- "dec. Opponent Name (OpponentTeam) 5-3" (decision)
+- "pin Opponent Name (OpponentTeam) 2:45" (pin with time)
+- "TF Opponent Name (OpponentTeam) 18-3" (technical fall)
+- "maj. dec. Opponent Name (OpponentTeam) 12-4" (major decision)
+"""
+```
+
+**Fix**: Completely refactored to use the LEARNED template system:
+1. User creates template via "Learn New" tab (provides examples)
+2. User selects that template in "Tournament" tab
+3. System applies learned template (not hardcoded logic)
+4. Generic entity filtering post-processing (works for ANY entity type)
+
+**Location**: src/api/main.py, lines 864-1038
+
+---
+
+## Charter Compliance Verification
+
+| Charter Rule | Status | How We Meet It |
+|-------------|--------|----------------|
+| ❌ NO sport-specific code | ✅ PASS | Uses learned templates, not hardcoded logic |
+| ❌ NO hardcoded formats | ✅ PASS | User provides format in examples |
+| ❌ NO document-type parsers | ✅ PASS | Uses SimpleTransformerDB (generic) |
+| ✅ System LEARNS from examples | ✅ PASS | User teaches via "Learn New" tab |
+| ✅ Works for unseen doc types | ✅ PASS | Just create new template, no code changes |
+| ✅ Zero code changes for new types | ✅ PASS | All learning-based, no code needed |
+
+---
+
+# Railway Deployment Issues - Fixed (Previous)
 
 ## Issues Identified and Resolved
 

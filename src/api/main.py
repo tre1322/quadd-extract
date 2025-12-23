@@ -863,184 +863,175 @@ async def extract_raw(
 
 @app.post("/api/extract/tournament")
 async def extract_tournament(
+    processor_id: str = Form(...),
     files: List[UploadFile] = File(...),
     teams: str = Form(...),
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Extract tournament results filtered by team names.
+    Generic document extraction with entity filtering.
 
-    For wrestling tournaments - analyzes bracket images/PDFs and extracts
-    results for specified teams only using fuzzy team name matching.
+    Uses the LEARNED template system (not sport-specific code) to transform
+    documents, with optional filtering by entity names (teams, schools, etc.).
+
+    This is charter-compliant: The transformation logic comes from user-provided
+    examples (learned templates), not hardcoded sport/document knowledge.
 
     Args:
-        files: List of bracket images or PDFs (one per weight class)
-        teams: JSON array of team names to filter for
+        processor_id: ID of previously learned template
+        files: List of document files (PDFs or images)
+        teams: JSON array of entity names to filter for (e.g., team names)
         current_user: Authenticated user
 
     Returns:
-        Formatted box scores for the specified teams
+        Transformed output filtered by specified entities
+
+    Example:
+        User first creates template via "Learn New" with example output.
+        Then uses this endpoint to apply that template with entity filtering.
     """
-    # Check if extractor is available
-    if app.state.extractor is None:
-        raise HTTPException(
-            status_code=503,
-            detail="Extraction service unavailable. ANTHROPIC_API_KEY not configured."
-        )
-
     try:
-        # Parse teams JSON
-        team_names = json.loads(teams)
+        from src.simple_transformer import SimpleTransformerDB
 
-        if not team_names or len(team_names) == 0:
+        # Parse entity names (teams, schools, etc.)
+        entity_names = json.loads(teams)
+
+        if not entity_names or len(entity_names) == 0:
             raise HTTPException(
                 status_code=400,
-                detail="At least one team name is required"
+                detail="At least one entity name (team, school, etc.) is required"
             )
 
-        logger.info(f"Tournament extraction for teams: {team_names}")
-        logger.info(f"Processing {len(files)} bracket file(s)")
+        # Get processor info
+        processor_data = await app.state.db.get_processor(processor_id)
+        if not processor_data:
+            raise HTTPException(status_code=404, detail="Template not found. Please create a template first via 'Learn New' tab.")
 
-        # Use VisionExtractor for bracket analysis
-        extractor: HybridExtractor = app.state.extractor
-        vision_extractor = VisionExtractor(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        processor_name = processor_data['name']
+        document_type = processor_data['document_type']
 
-        # Build the extraction prompt with team filtering
-        team_list = ", ".join([f"'{t}'" for t in team_names])
+        logger.info(f"Tournament extraction using template '{processor_name}' for entities: {entity_names}")
+        logger.info(f"Processing {len(files)} file(s)")
 
-        extraction_prompt = f"""You are analyzing wrestling tournament bracket images.
+        # Create simple transformer (uses learned template)
+        simple_transformer = SimpleTransformerDB(
+            db=app.state.db,
+            api_key=os.getenv("ANTHROPIC_API_KEY")
+        )
 
-TEAMS TO INCLUDE: {team_list}
-
-TASK: Extract match results for ONLY wrestlers from the specified teams.
-
-FUZZY MATCHING RULES:
-- Match team names flexibly - if the user specifies 'Albert Lea', include wrestlers whose team contains 'Albert Lea' (e.g., 'Albert Lea Area')
-- Common abbreviations should match (e.g., 'WML' = 'Windom-Mountain Lake', 'FMCC' = 'Fairmont Martin County Central')
-- Partial matches are OK - 'Martin County' should match 'Martin County Red Bulls'
-
-OUTPUT FORMAT:
-Group results by team name (use full team name from bracket, not user's abbreviated input).
-
-For each team:
-TEAM NAME (all caps)
-Weight: Wrestler Name (Team Abbr) [match result]; [match result]; ... [Placement]
-
-Match result format examples:
-- "dec. Opponent Name (OpponentTeam) 5-3" (decision)
-- "pin Opponent Name (OpponentTeam) 2:45" (pin with time)
-- "TF Opponent Name (OpponentTeam) 18-3" (technical fall)
-- "maj. dec. Opponent Name (OpponentTeam) 12-4" (major decision)
-- "forfeit" or "bye"
-
-Placement format: "First place", "Second place", "Third place", "Fourth place", etc.
-
-EXAMPLE OUTPUT:
-WINDOM-MOUNTAIN LAKE
-152: Kameron Koerner (WML) TF Blake Stancek (Hutch) 19-4; Koerner pin Lucas Kuball (FMCC) 4:32; Koerner dec. Charger Erlandson (AE) 4-1; Koerner dec. Mason Hansen (Paynesville) 5-4; Koerner pin Lucas Kuball (FMCC) 3:55. Third place
-
-106: Dylan Smith (WML) dec. John Jones (FMCC) 6-2; Smith pin Mike Wilson (JCC) 1:45. First place
-
-ALBERT LEA AREA
-145: Mike Johnson (ALA) bye; Johnson pin Tom Anderson (Marshall) 3:21; Johnson lost to Jake Wilson (Windom) 7-4. Second place
-
-IMPORTANT:
-- Only include wrestlers from the specified teams
-- Use the wrestler's LAST NAME for subsequent match results in the same line
-- Include ALL matches leading to their final placement
-- List matches chronologically (first match to last)
-- Be precise with match scores and times
-
-Analyze the bracket images and extract the results:"""
-
-        # Combine all files for vision analysis
+        # Process all files and collect results
         all_results = []
-        total_tokens = 0
+        total_input_tokens = 0
+        total_output_tokens = 0
 
         for file in files:
-            content = await file.read()
-            filename = file.filename or "bracket.pdf"
+            file_bytes = await file.read()
+            filename = file.filename or "document.pdf"
 
             logger.info(f"Processing {filename}...")
 
-            # Extract using vision
-            extraction = await vision_extractor.extract_from_pdf(
-                content,
-                filename,
-                extraction_prompt
+            # Transform using the learned template
+            # Note: Entity filtering should be taught during template creation
+            # User creates example showing output filtered to specific entities
+            # System learns to filter similarly for new entity names
+            result = await simple_transformer.transform(
+                processor_id=processor_id,
+                new_file_bytes=file_bytes,
+                filename=filename
             )
 
-            if extraction.success and extraction.data.get('extracted_text'):
-                all_results.append(extraction.data['extracted_text'])
-                total_tokens += extraction.tokens_used or 0
+            if result and result.get('output'):
+                all_results.append(result['output'])
+                total_input_tokens += result.get('input_tokens', 0)
+                total_output_tokens += result.get('output_tokens', 0)
             else:
-                logger.warning(f"Failed to extract from {filename}: {extraction.errors}")
+                logger.warning(f"No output from {filename}")
 
         if not all_results:
             raise HTTPException(
                 status_code=500,
-                detail="Failed to extract data from tournament brackets. Please check if the images are clear and contain bracket information."
+                detail="Failed to extract data from files. Please check if files are valid and template is appropriate."
             )
 
-        # Combine all results
+        # Combine results
         combined_results = "\n\n".join(all_results)
 
-        # If we got fragmented results, ask Claude to consolidate and deduplicate
+        # Apply entity filtering and consolidation (generic post-processing)
+        entity_list = ", ".join([f"'{e}'" for e in entity_names])
+
         if len(files) > 1:
-            consolidation_prompt = f"""The following are wrestling tournament results extracted from multiple bracket images for these teams: {team_list}
+            # Multiple files: consolidate and filter
+            filter_prompt = f"""Process these results from multiple document pages:
 
-Results may be fragmented or duplicated across images. Please:
-1. Consolidate all results for each team
-2. Remove duplicates (same wrestler, same weight class)
-3. Ensure proper formatting with team name headers
-4. Sort by team name, then by weight class (ascending)
+TASKS:
+1. Filter: Include ONLY entries related to these entities: {entity_list}
+   - Use flexible matching (partial names OK - e.g., "Albert Lea" matches "Albert Lea Area")
+2. Consolidate: Remove duplicate entries for the same entity
+3. Maintain: Keep the original output format
+4. Sort: By entity name
 
-Current results:
+Input results:
 
 {combined_results}
 
-Provide the consolidated, deduplicated results:"""
-
-            # Use a simple Claude call to consolidate
-            client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-            consolidation_response = client.messages.create(
-                model="claude-sonnet-4-20250514",
-                max_tokens=4096,
-                messages=[{
-                    "role": "user",
-                    "content": consolidation_prompt
-                }]
-            )
-
-            final_results = consolidation_response.content[0].text
-            total_tokens += consolidation_response.usage.input_tokens + consolidation_response.usage.output_tokens
+Filtered and consolidated results:"""
         else:
-            final_results = combined_results
+            # Single file: just filter
+            filter_prompt = f"""Filter these results to include ONLY entries related to these entities: {entity_list}
 
+Use flexible matching - partial names are OK (e.g., "Albert Lea" matches "Albert Lea Area").
+
+Maintain the original output format.
+
+Input results:
+
+{combined_results}
+
+Filtered results:"""
+
+        client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        filter_response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=4096,
+            messages=[{
+                "role": "user",
+                "content": filter_prompt
+            }]
+        )
+
+        final_results = filter_response.content[0].text
+        total_input_tokens += filter_response.usage.input_tokens
+        total_output_tokens += filter_response.usage.output_tokens
+
+        total_tokens = total_input_tokens + total_output_tokens
         logger.info(f"Tournament extraction successful. Total tokens used: {total_tokens}")
+
+        # Log usage
+        await app.state.db.log_usage(
+            user_id=current_user['user_id'],
+            processor_id=processor_id,
+            processor_name=processor_name,
+            document_type=document_type,
+            input_type='pdf',
+            input_tokens=total_input_tokens,
+            output_tokens=total_output_tokens,
+            success=True,
+            error_message=None,
+            action_type='transform'
+        )
 
         return {
             "success": True,
             "results": final_results,
-            "teams": team_names,
+            "teams": entity_names,
             "files_processed": len(files),
             "tokens_used": total_tokens
         }
 
     except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="Invalid teams JSON format")
-    except anthropic.AuthenticationError as e:
-        logger.error(f"API authentication failed: {e}")
-        raise HTTPException(
-            status_code=401,
-            detail="API key is invalid or expired."
-        )
-    except anthropic.APIConnectionError as e:
-        logger.error(f"API connection failed: {e}")
-        raise HTTPException(
-            status_code=503,
-            detail="Cannot connect to Anthropic API. Check your internet connection."
-        )
+        raise HTTPException(status_code=400, detail="Invalid entity names JSON format")
+    except HTTPException:
+        raise
     except Exception as e:
         logger.exception(f"Tournament extraction error: {e}")
         raise HTTPException(status_code=500, detail=str(e))

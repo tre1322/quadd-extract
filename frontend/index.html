@@ -825,6 +825,18 @@ Johnson   1  1   2" rows="8"></textarea>
 
                 <!-- Tournament Tab -->
                 <div id="tournament-tab" class="tab-content">
+                    <div class="help-text" style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #ffc107;">
+                        <strong>📚 First-time setup:</strong> Create a tournament template in the "Learn New" tab by uploading a sample bracket and showing the desired output format. Then select that template here.
+                    </div>
+
+                    <div class="form-group">
+                        <label>Select Template</label>
+                        <select id="tournament-processor-select" class="form-control">
+                            <option value="">Loading templates...</option>
+                        </select>
+                        <div class="help-text">Choose the template you created for this tournament type</div>
+                    </div>
+
                     <div class="form-group">
                         <label>Upload Tournament Brackets</label>
                         <div class="file-upload" id="tournament-upload">
@@ -1486,10 +1498,15 @@ This template will transform new documents the same way using AI.`;
 
         // Tournament button
         document.getElementById('tournament-btn').addEventListener('click', async () => {
+            const processorId = document.getElementById('tournament-processor-select').value;
             const files = document.getElementById('tournament-file').files;
             const teamsText = document.getElementById('tournament-teams').value.trim();
 
             // Validation
+            if (!processorId) {
+                showStatus('Please select a template', 'error');
+                return;
+            }
             if (files.length === 0) {
                 showStatus('Please upload tournament brackets', 'error');
                 return;
@@ -1509,6 +1526,9 @@ This template will transform new documents the same way using AI.`;
 
             // Create form data
             const formData = new FormData();
+
+            // Add processor ID
+            formData.append('processor_id', processorId);
 
             // Add all files
             for (let i = 0; i < files.length; i++) {
@@ -1610,17 +1630,29 @@ This template will transform new documents the same way using AI.`;
 
                 const data = await response.json();
 
+                // Populate extract tab dropdown
                 const select = document.getElementById('processor-select');
-                select.innerHTML = '<option value="">-- Select a processor --</option>';
+                select.innerHTML = '<option value="">-- Select a template --</option>';
+
+                // Populate tournament tab dropdown
+                const tournamentSelect = document.getElementById('tournament-processor-select');
+                tournamentSelect.innerHTML = '<option value="">-- Select a template --</option>';
 
                 data.processors.forEach(p => {
+                    // Add to extract dropdown
                     const option = document.createElement('option');
                     option.value = p.id;
                     option.textContent = `${p.name} (${p.document_type})`;
                     select.appendChild(option);
+
+                    // Add to tournament dropdown
+                    const tournamentOption = document.createElement('option');
+                    tournamentOption.value = p.id;
+                    tournamentOption.textContent = `${p.name} (${p.document_type})`;
+                    tournamentSelect.appendChild(tournamentOption);
                 });
 
-                console.log(`Loaded ${data.processors.length} templates for dropdown`);
+                console.log(`Loaded ${data.processors.length} templates for dropdowns`);
             } catch (error) {
                 console.error('Failed to load processor list:', error);
             }
