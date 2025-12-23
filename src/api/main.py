@@ -1432,11 +1432,11 @@ async def simple_learn(
     Requires authentication. Template will be associated with the current user.
 
     Accepts EITHER:
-    - example_file (PDF upload) - for PDF sources
+    - example_file (PDF, Image, Word, Excel, TXT, CSV) - for document sources
     - source_text (pasted text) - for text sources (hockey stats, etc.)
 
     Simple LLM-based approach:
-    1. Extract raw text from PDF or use pasted text
+    1. Extract raw text/images from document or use pasted text
     2. Store example input/output pair
     3. Use LLM to transform new documents the same way
 

@@ -740,12 +740,13 @@
                     </div>
 
                     <div class="form-group">
-                        <label>Upload Example Document (PDF)</label>
+                        <label>Upload Example Document (PDF or Image)</label>
                         <div class="file-upload" id="example-upload">
-                            <input type="file" id="example-file" accept=".pdf">
-                            <div>📄 Click to upload PDF</div>
+                            <input type="file" id="example-file" accept=".pdf,image/*">
+                            <div>📄 Click to upload PDF or image</div>
                             <div class="file-name" style="display: none;"></div>
                         </div>
+                        <div class="help-text">Accepts PDF, PNG, JPG, JPEG - perfect for bracket screenshots</div>
                     </div>
 
                     <div style="text-align: center; margin: 20px 0; color: #999; font-weight: 600;">
@@ -1314,11 +1315,11 @@ Partial matches work - 'Albert Lea' will match 'Albert Lea Area'" rows="6"></tex
                 return;
             }
             if (!file && !sourceText) {
-                showStatus('Please upload a PDF OR paste source text', 'error');
+                showStatus('Please upload a file OR paste source text', 'error');
                 return;
             }
             if (file && sourceText) {
-                showStatus('Please provide either PDF upload OR pasted text, not both', 'error');
+                showStatus('Please provide either file upload OR pasted text, not both', 'error');
                 return;
             }
             if (!desiredOutput) {
@@ -1344,7 +1345,7 @@ Partial matches work - 'Albert Lea' will match 'Albert Lea Area'" rows="6"></tex
             const originalText = btn.innerHTML;
             btn.disabled = true;
             btn.innerHTML = '<span class="loading"></span> Learning...';
-            const inputType = file ? 'PDF' : 'text';
+            const inputType = file ? 'file' : 'text';
             showStatus(`Learning from ${inputType} example... This may take 30-60 seconds.`, 'info');
             clearOutput();
 
