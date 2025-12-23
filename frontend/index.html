@@ -1416,8 +1416,11 @@ This template will transform new documents the same way using AI.`;
 
                     setOutput(output);
 
-                    // Clear the paste text field after successful extraction
+                    // Clear inputs after successful extraction to allow next extraction
                     document.getElementById('extract-text').value = '';
+                    document.getElementById('extract-file').value = '';
+                    document.querySelector('#extract-upload .file-name').style.display = 'none';
+                    document.getElementById('extract-upload').classList.remove('has-file');
                 } else {
                     throw new Error(data.error_message || 'Transformation failed');
                 }
