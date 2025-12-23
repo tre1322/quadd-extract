@@ -910,8 +910,12 @@ async def extract_tournament(
         processor_name = processor_data['name']
         document_type = processor_data['document_type']
 
-        logger.info(f"Tournament extraction using template '{processor_name}' for entities: {entity_names}")
-        logger.info(f"Processing {len(files)} file(s)")
+        logger.info("="*80)
+        logger.info(f"TOURNAMENT EXTRACTION START")
+        logger.info(f"Template: '{processor_name}'")
+        logger.info(f"Entity filter: {entity_names}")
+        logger.info(f"Number of files: {len(files)}")
+        logger.info("="*80)
 
         # Create simple transformer (uses learned template)
         simple_transformer = SimpleTransformerDB(
@@ -956,57 +960,83 @@ async def extract_tournament(
         # Combine results
         combined_results = "\n\n".join(all_results)
 
+        logger.info("-"*80)
+        logger.info(f"BEFORE FILTERING - Combined results ({len(combined_results)} chars):")
+        logger.info(f"Preview (first 500 chars): {combined_results[:500]}")
+        logger.info("-"*80)
+
         # Apply entity filtering and consolidation (generic post-processing)
         entity_list = ", ".join([f"'{e}'" for e in entity_names])
+
+        logger.info(f"Applying entity filter for: {entity_list}")
 
         if len(files) > 1:
             # Multiple files: consolidate and filter
             filter_prompt = f"""Process these results from multiple document pages:
 
-TASKS:
-1. Filter: Include ONLY entries related to these entities: {entity_list}
-   - Use flexible matching (partial names OK - e.g., "Albert Lea" matches "Albert Lea Area")
+CRITICAL FILTERING INSTRUCTIONS:
 
-2. CRITICAL - Perspective Rule: Output should follow the FILTERED ENTITY'S path/journey/results from THEIR perspective
-   - If filtering for entity X, show X's results/journey, REGARDLESS of outcomes (wins, losses, rankings, etc.)
-   - Do NOT switch to opponents/competitors/other entities just because they had better outcomes
-   - Examples:
-     * Tournament: Filter for Team A → Show Team A's matches (even if they lost)
-     * Company report: Filter for Sales Dept → Show Sales Dept metrics (even if they underperformed)
-     * School rankings: Filter for School A → Show School A's results (even if they ranked low)
+You MUST filter to show ONLY these entities: {entity_list}
 
-3. Consolidate: Remove duplicate entries for the same entity
-4. Maintain: Keep the original output format
-5. Sort: By entity name
+STEP 1 - STRICT FILTERING:
+- Include ONLY entries where a person/item belongs to one of the specified entities
+- Use flexible matching (partial names OK - e.g., "Albert Lea" matches "Albert Lea Area")
+- EXCLUDE ALL entries from other entities - even if they're mentioned in the results
+- Example: If filtering for "Team A", EXCLUDE results for Team B, Team C, etc. even if Team A competed against them
+
+STEP 2 - PERSPECTIVE RULE:
+- Output should follow the FILTERED ENTITY'S path/journey/results from THEIR perspective
+- Show the entity's results REGARDLESS of outcomes (wins, losses, rankings, etc.)
+- Do NOT switch to opponents/competitors just because they had better outcomes
+- Examples:
+  * Tournament: Filter for Team A → Show ONLY Team A's participants (exclude opponents)
+  * Company: Filter for Sales Dept → Show ONLY Sales Dept members (exclude other depts)
+  * School: Filter for School A → Show ONLY School A's students (exclude other schools)
+
+STEP 3 - CONSOLIDATE:
+- Remove duplicate entries for the same entity/person
+
+STEP 4 - FORMAT:
+- Maintain the original output format
+- Sort by entity name
 
 Input results:
 
 {combined_results}
 
-Filtered and consolidated results:"""
+Filtered and consolidated results (ONLY entities from {entity_list}):"""
         else:
             # Single file: just filter
-            filter_prompt = f"""Filter these results to include ONLY entries related to these entities: {entity_list}
+            filter_prompt = f"""CRITICAL FILTERING INSTRUCTIONS:
 
-CRITICAL - Perspective Rule:
+You MUST filter to show ONLY these entities: {entity_list}
+
+STEP 1 - STRICT FILTERING:
+- Include ONLY entries where a person/item belongs to one of the specified entities
+- Use flexible matching (partial names OK - e.g., "Albert Lea" matches "Albert Lea Area")
+- EXCLUDE ALL entries from other entities - even if they're mentioned in the results
+- Example: If filtering for "Team A", EXCLUDE results for Team B, Team C, etc. even if Team A competed against them
+
+STEP 2 - PERSPECTIVE RULE:
 - Output should follow the FILTERED ENTITY'S path/journey/results from THEIR perspective
-- Show the entity's results REGARDLESS of outcomes (wins, losses, rankings, performance, etc.)
-- Do NOT switch to opponents/competitors/other entities just because they had better outcomes
+- Show the entity's results REGARDLESS of outcomes (wins, losses, rankings, etc.)
+- Do NOT switch to opponents/competitors just because they had better outcomes
+- Examples:
+  * Tournament: Filter for Team A → Show ONLY Team A's participants (exclude opponents)
+  * Company: Filter for Sales Dept → Show ONLY Sales Dept members (exclude other depts)
+  * School: Filter for School A → Show ONLY School A's students (exclude other schools)
 
-Examples of correct filtering:
-- Tournament: Filter for "Team A" → Show Team A's matches even if they lost
-- Company report: Filter for "Sales Dept" → Show Sales Dept even if they underperformed
-- Rankings: Filter for "School A" → Show School A even if they ranked low
-
-Use flexible matching - partial names are OK (e.g., "Albert Lea" matches "Albert Lea Area").
-
-Maintain the original output format.
+STEP 3 - FORMAT:
+- Maintain the original output format
 
 Input results:
 
 {combined_results}
 
-Filtered results:"""
+Filtered results (ONLY entities from {entity_list}):"""
+
+        logger.info(f"Sending filter request to Claude...")
+        logger.info(f"Filter prompt length: {len(filter_prompt)} chars")
 
         client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
         filter_response = client.messages.create(
@@ -1022,8 +1052,14 @@ Filtered results:"""
         total_input_tokens += filter_response.usage.input_tokens
         total_output_tokens += filter_response.usage.output_tokens
 
+        logger.info("-"*80)
+        logger.info(f"AFTER FILTERING - Final results ({len(final_results)} chars):")
+        logger.info(f"Preview (first 500 chars): {final_results[:500]}")
+        logger.info("-"*80)
+
         total_tokens = total_input_tokens + total_output_tokens
         logger.info(f"Tournament extraction successful. Total tokens used: {total_tokens}")
+        logger.info("="*80)
 
         # Log usage
         await app.state.db.log_usage(
