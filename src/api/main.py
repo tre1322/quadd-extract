@@ -34,6 +34,7 @@ from src.auth import (
     get_admin_user,
     get_current_user_optional
 )
+import bcrypt
 
 # Configure logging
 logging.basicConfig(
@@ -41,6 +42,66 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# AUTHENTICATION INITIALIZATION
+# =============================================================================
+
+async def init_default_admin(db):
+    """Initialize default admin user if it doesn't exist."""
+    from sqlalchemy import select
+    from src.db.models import UserModel
+
+    try:
+        # Check if admin user exists
+        async with db.session_factory() as session:
+            result = await session.execute(
+                select(UserModel).where(UserModel.email == 'admin@quadd.com')
+            )
+            existing_admin = result.scalar_one_or_none()
+
+            if existing_admin:
+                logger.info("✓ Admin user already exists")
+                logger.info(f"  Email: {existing_admin.email}")
+                logger.info(f"  Name: {existing_admin.name}")
+                logger.info(f"  Role: {existing_admin.role}")
+                return
+
+            # Create default admin user
+            logger.info("Creating default admin user...")
+
+            admin_id = str(uuid.uuid4())
+            password = "changeme123"
+            password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+            admin_user = UserModel(
+                id=admin_id,
+                email='admin@quadd.com',
+                password_hash=password_hash,
+                name='Admin',
+                role='admin'
+            )
+
+            session.add(admin_user)
+            await session.commit()
+
+            logger.info("✓ Default admin user created successfully!")
+            logger.info("=" * 60)
+            logger.info("DEFAULT ADMIN CREDENTIALS")
+            logger.info("=" * 60)
+            logger.info("Email:    admin@quadd.com")
+            logger.info("Password: changeme123")
+            logger.info("=" * 60)
+            logger.info("")
+            logger.info("⚠️  SECURITY WARNING:")
+            logger.info("Please change this password immediately after first login!")
+            logger.info("This is a temporary password for initial setup only.")
+            logger.info("=" * 60)
+
+    except Exception as e:
+        logger.exception(f"Failed to initialize admin user: {e}")
+        raise
 
 
 # =============================================================================
@@ -52,7 +113,7 @@ async def lifespan(app: FastAPI):
     """Application lifespan manager."""
     # Startup
     logger.info("Starting Quadd Extract API...")
-    
+
     # Initialize extractor
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
@@ -67,14 +128,20 @@ async def lifespan(app: FastAPI):
         logger.error("=" * 60)
     else:
         logger.info(f"API key found: {api_key[:15]}...")
-    
+
     try:
         app.state.extractor = HybridExtractor(api_key=api_key)
         app.state.renderer = TemplateRenderer()
 
         # Initialize database
-        app.state.db = await get_database()
-        logger.info("Database initialized")
+        db_path = os.getenv('DATABASE_PATH', 'quadd_extract.db')
+        logger.info(f"Initializing database at: {db_path}")
+        app.state.db = await get_database(db_path)
+        logger.info(f"Database initialized successfully at: {db_path}")
+
+        # Initialize authentication system - create default admin user if needed
+        logger.info("Initializing authentication system...")
+        await init_default_admin(app.state.db)
 
         # Initialize learning service
         app.state.learning_service = LearningService(
@@ -87,6 +154,13 @@ async def lifespan(app: FastAPI):
     except ValueError as e:
         logger.error(f"Failed to initialize extractor: {e}")
         # Still start the app but extraction won't work
+        app.state.extractor = None
+        app.state.renderer = TemplateRenderer()
+        app.state.db = None
+        app.state.learning_service = None
+    except Exception as e:
+        logger.exception(f"Failed to initialize application: {e}")
+        # Set to None to indicate initialization failure
         app.state.extractor = None
         app.state.renderer = TemplateRenderer()
         app.state.db = None
@@ -218,17 +292,29 @@ async def login(request: LoginRequest):
     Validates email/password and returns a JWT token valid for 24 hours.
     """
     try:
+        # Check if database is initialized
+        if not app.state.db:
+            logger.error("Login attempt but database not initialized!")
+            raise HTTPException(
+                status_code=503,
+                detail="Database not initialized. Please check server logs."
+            )
+
         # Get user by email
+        logger.debug(f"Login attempt for email: {request.email}")
         user = await app.state.db.get_user_by_email(request.email)
 
         if not user:
+            logger.warning(f"Login failed: User not found for email: {request.email}")
             raise HTTPException(
                 status_code=401,
                 detail="Invalid email or password"
             )
 
         # Verify password
-        if not verify_password(request.password, user['password_hash']):
+        password_valid = verify_password(request.password, user['password_hash'])
+        if not password_valid:
+            logger.warning(f"Login failed: Invalid password for email: {request.email}")
             raise HTTPException(
                 status_code=401,
                 detail="Invalid email or password"
@@ -241,7 +327,7 @@ async def login(request: LoginRequest):
             role=user['role']
         )
 
-        logger.info(f"User logged in: {user['email']}")
+        logger.info(f"User logged in successfully: {user['email']}")
 
         return LoginResponse(
             token=token,
@@ -256,7 +342,7 @@ async def login(request: LoginRequest):
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception(f"Login failed: {e}")
+        logger.exception(f"Login failed with unexpected error: {e}")
         raise HTTPException(status_code=500, detail="Login failed")
 
 
