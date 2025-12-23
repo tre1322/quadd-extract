@@ -1415,6 +1415,9 @@ This template will transform new documents the same way using AI.`;
                     const output = data.output || 'No output generated';
 
                     setOutput(output);
+
+                    // Clear the paste text field after successful extraction
+                    document.getElementById('extract-text').value = '';
                 } else {
                     throw new Error(data.error_message || 'Transformation failed');
                 }
