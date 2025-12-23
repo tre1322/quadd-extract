@@ -695,14 +695,16 @@ Do not include any explanation or commentary."""
 I will show you an EXAMPLE transformation, then give you a NEW document to transform the same way.
 
 For each document, you receive:
-1. IMAGES - to understand the structure and layout
-2. OCR TEXT - for accurate names, numbers, and values (use this for precise extraction)
+1. **IMAGES (PRIMARY SOURCE)** - Complete, accurate visual content
+2. **OCR TEXT (SUPPLEMENTARY)** - May be incomplete or corrupted for complex layouts
 
-Generic approach - works for honor rolls, legal notices, sports stats, or ANY document type.
+**IMPORTANT:** For documents with complex layouts (brackets, tables, forms), prioritize extracting from IMAGES. OCR text from pytesseract often fails on complex layouts - if it looks corrupted but the image is clear, extract everything from the image and ignore the OCR text.
+
+Generic approach - works for honor rolls, legal notices, sports stats, tournament brackets, or ANY document type.
 
 # EXAMPLE TRANSFORMATION
 
-## Example Images (for structure/layout):"""
+## Example Images (primary source - read from these):"""
         })
 
         # Add example images
@@ -720,7 +722,7 @@ Generic approach - works for honor rolls, legal notices, sports stats, or ANY do
         content.append({
             "type": "text",
             "text": f"""
-## Example OCR Text (accurate text extraction):
+## Example OCR Text (supplementary - may be incomplete):
 ```
 {example_ocr_text}
 ```
@@ -734,7 +736,12 @@ Generic approach - works for honor rolls, legal notices, sports stats, or ANY do
 
 Transform this NEW document in the SAME WAY as the example above.
 
-## New Document Images (for structure/layout):"""
+Study the example carefully:
+- How does the input structure map to the output format?
+- What filtering or selection is being applied?
+- What perspective or grouping is used?
+
+## New Document Images (primary source - extract from these):"""
         })
 
         # Add new images to transform
@@ -752,17 +759,24 @@ Transform this NEW document in the SAME WAY as the example above.
         content.append({
             "type": "text",
             "text": f"""
-## New Document OCR Text (accurate text extraction):
+## New Document OCR Text (supplementary - may be incomplete):
 ```
 {new_ocr_text}
 ```
 
 # INSTRUCTIONS
 
-Use the IMAGES to understand structure and layout.
-Use the OCR TEXT for accurate names, numbers, and values.
+**PRIMARY SOURCE: Use the IMAGES** - The images show the complete, accurate content.
+**SECONDARY SOURCE: OCR Text** - Use only as supplementary help if needed.
 
-**IMPORTANT:** You receive both images and OCR text. OCR text extraction can sometimes fail on complex PDFs - names may appear separated from their data, or rows may be out of order. Always cross-reference the OCR text with what you SEE in the images. If they conflict, trust the visual data from the images.
+**CRITICAL FOR COMPLEX DOCUMENTS:** If the document has complex layouts (tables, brackets, forms, charts), the OCR text may be incomplete or corrupted. In these cases:
+- **RELY ON THE IMAGES** - Extract all content directly from what you see in the images
+- Ignore garbled or corrupted OCR text
+- The images contain the true, complete information
+
+**For simple text documents:** OCR text is reliable and can be used for precise extraction.
+
+**How to decide:** If the OCR text looks corrupted, fragmented, or incomplete BUT the images are clear and readable, extract everything from the images and ignore the OCR text.
 
 IMPORTANT RULES (generic - apply to ANY document type):
 
