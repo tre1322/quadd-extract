@@ -966,9 +966,18 @@ async def extract_tournament(
 TASKS:
 1. Filter: Include ONLY entries related to these entities: {entity_list}
    - Use flexible matching (partial names OK - e.g., "Albert Lea" matches "Albert Lea Area")
-2. Consolidate: Remove duplicate entries for the same entity
-3. Maintain: Keep the original output format
-4. Sort: By entity name
+
+2. CRITICAL - Perspective Rule: Output should follow the FILTERED ENTITY'S path/journey/results from THEIR perspective
+   - If filtering for entity X, show X's results/journey, REGARDLESS of outcomes (wins, losses, rankings, etc.)
+   - Do NOT switch to opponents/competitors/other entities just because they had better outcomes
+   - Examples:
+     * Tournament: Filter for Team A → Show Team A's matches (even if they lost)
+     * Company report: Filter for Sales Dept → Show Sales Dept metrics (even if they underperformed)
+     * School rankings: Filter for School A → Show School A's results (even if they ranked low)
+
+3. Consolidate: Remove duplicate entries for the same entity
+4. Maintain: Keep the original output format
+5. Sort: By entity name
 
 Input results:
 
@@ -978,6 +987,16 @@ Filtered and consolidated results:"""
         else:
             # Single file: just filter
             filter_prompt = f"""Filter these results to include ONLY entries related to these entities: {entity_list}
+
+CRITICAL - Perspective Rule:
+- Output should follow the FILTERED ENTITY'S path/journey/results from THEIR perspective
+- Show the entity's results REGARDLESS of outcomes (wins, losses, rankings, performance, etc.)
+- Do NOT switch to opponents/competitors/other entities just because they had better outcomes
+
+Examples of correct filtering:
+- Tournament: Filter for "Team A" → Show Team A's matches even if they lost
+- Company report: Filter for "Sales Dept" → Show Sales Dept even if they underperformed
+- Rankings: Filter for "School A" → Show School A even if they ranked low
 
 Use flexible matching - partial names are OK (e.g., "Albert Lea" matches "Albert Lea Area").
 
