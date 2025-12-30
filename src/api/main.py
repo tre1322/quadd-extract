@@ -20,6 +20,7 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
 from pydantic import BaseModel
+from sqlalchemy.exc import IntegrityError
 import uuid
 
 from src.extractors.hybrid import HybridExtractor, VisionExtractor
@@ -1253,6 +1254,7 @@ async def learn_processor(
     document_type: str = Form(...),
     example_file: UploadFile = File(...),
     desired_output: str = Form(...),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Learn a new processor from an example document.
@@ -1260,6 +1262,8 @@ async def learn_processor(
     This is the core Phase 1 learning endpoint. Upload an example document
     and provide the desired output, and the system will generate extraction
     rules that can be applied to similar documents.
+
+    Requires authentication. Template will be associated with the current user.
     """
     learning_service: LearningService = app.state.learning_service
     if not learning_service:
@@ -1275,7 +1279,8 @@ async def learn_processor(
             filename=example_file.filename or "document.pdf",
             desired_output=desired_output,
             document_type=document_type,
-            name=name
+            name=name,
+            user_id=current_user['user_id']
         )
 
         return {
@@ -1292,6 +1297,20 @@ async def learn_processor(
             }
         }
 
+    except HTTPException:
+        raise
+    except IntegrityError as e:
+        # Handle duplicate template name error
+        error_msg = str(e)
+        if "UNIQUE constraint failed" in error_msg or "uq_user_processor_name" in error_msg:
+            logger.warning(f"Duplicate template name '{name}' for user {current_user['user_id']}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"A template with the name '{name}' already exists. Please choose a different name."
+            )
+        else:
+            logger.exception(f"Database integrity error: {e}")
+            raise HTTPException(status_code=500, detail="Database error occurred")
     except Exception as e:
         logger.exception(f"Failed to learn processor: {e}")
         raise HTTPException(status_code=500, detail=f"Learning failed: {str(e)}")
@@ -1584,6 +1603,18 @@ async def simple_learn(
 
     except HTTPException:
         raise
+    except IntegrityError as e:
+        # Handle duplicate template name error
+        error_msg = str(e)
+        if "UNIQUE constraint failed" in error_msg or "uq_user_processor_name" in error_msg:
+            logger.warning(f"Duplicate template name '{name}' for user {current_user['user_id']}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"A template with the name '{name}' already exists. Please choose a different name."
+            )
+        else:
+            logger.exception(f"Database integrity error: {e}")
+            raise HTTPException(status_code=500, detail="Database error occurred")
     except Exception as e:
         logger.exception(f"Simple learning failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))

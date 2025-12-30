@@ -19,7 +19,7 @@ CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
 -- Stores learned transformation rules for document types
 CREATE TABLE IF NOT EXISTS processors (
     id TEXT PRIMARY KEY,  -- UUID
-    name TEXT NOT NULL UNIQUE,  -- Human-readable name like "windom_basketball"
+    name TEXT NOT NULL,  -- Human-readable name like "windom_basketball"
     document_type TEXT NOT NULL,  -- "basketball", "hockey", etc.
     processor_json TEXT NOT NULL,  -- Full Processor serialized as JSON
     user_id TEXT,  -- Link to user who created this processor
@@ -29,7 +29,8 @@ CREATE TABLE IF NOT EXISTS processors (
     success_count INTEGER DEFAULT 0,
     failure_count INTEGER DEFAULT 0,
     last_used TIMESTAMP,
-    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE(user_id, name)  -- Template names must be unique per user
 );
 
 CREATE INDEX IF NOT EXISTS idx_processors_type ON processors(document_type);

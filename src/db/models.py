@@ -2,7 +2,7 @@
 SQLAlchemy ORM models for the database.
 """
 from datetime import datetime
-from sqlalchemy import Column, String, Integer, Float, Boolean, Text, ForeignKey, DateTime
+from sqlalchemy import Column, String, Integer, Float, Boolean, Text, ForeignKey, DateTime, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
@@ -23,9 +23,12 @@ class UserModel(Base):
 class ProcessorModel(Base):
     """ORM model for processors table."""
     __tablename__ = 'processors'
+    __table_args__ = (
+        UniqueConstraint('user_id', 'name', name='uq_user_processor_name'),
+    )
 
     id = Column(String, primary_key=True)
-    name = Column(String, nullable=False, unique=True)
+    name = Column(String, nullable=False)
     document_type = Column(String, nullable=False)
     processor_json = Column(Text, nullable=False)
     user_id = Column(String, ForeignKey('users.id', ondelete='CASCADE'), nullable=True)  # Link to user

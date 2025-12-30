@@ -54,7 +54,8 @@ class LearningService:
         filename: str,
         desired_output: str,
         document_type: str,
-        name: str
+        name: str,
+        user_id: Optional[str] = None
     ) -> dict:
         """
         Learn a processor from an example document.
@@ -65,6 +66,7 @@ class LearningService:
             desired_output: Expected formatted output
             document_type: Type of document (basketball, hockey, etc.)
             name: Name for the processor
+            user_id: User ID who owns this processor (optional)
 
         Returns:
             Dictionary with processor_id, confidence, and test_output
@@ -106,7 +108,8 @@ class LearningService:
             processor_id=processor.id,
             name=processor.name,
             document_type=processor.document_type,
-            processor_json=processor.to_json()
+            processor_json=processor.to_json(),
+            user_id=user_id
         )
 
         # Save example
