@@ -16,7 +16,7 @@ import anthropic
 import fitz  # PyMuPDF
 from PIL import Image
 
-from src.model_config import resolve_model
+from src.model_config import extract_text, resolve_model
 from src.extractors.base import BaseExtractor
 from src.schemas.common import DocumentType, ExtractionResult
 
@@ -601,7 +601,7 @@ class VisionExtractor(BaseExtractor):
             )
             
             # Parse response
-            result_text = response.content[0].text.strip().lower()
+            result_text = extract_text(response).strip().lower()
             
             # Try to match to DocumentType
             try:
@@ -649,7 +649,7 @@ class VisionExtractor(BaseExtractor):
             )
             
             # Parse JSON response
-            result_text = response.content[0].text.strip()
+            result_text = extract_text(response).strip()
             
             # Clean up response (remove markdown code blocks if present)
             if result_text.startswith("```"):
@@ -717,7 +717,7 @@ Return ONLY valid JSON matching this schema, no markdown formatting.
                 messages=[{"role": "user", "content": content}]
             )
             
-            result_text = response.content[0].text.strip()
+            result_text = extract_text(response).strip()
             if result_text.startswith("```"):
                 lines = result_text.split("\n")
                 result_text = "\n".join(lines[1:-1])

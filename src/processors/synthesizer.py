@@ -15,7 +15,7 @@ from typing import Optional
 
 import anthropic
 
-from src.model_config import resolve_model
+from src.model_config import extract_text, resolve_model
 from src.ir.document_ir import DocumentIR
 from src.processors.models import Processor, Anchor, Region, ExtractionOp, Calculation, Validation
 from src.processors.executor import ProcessorExecutor
@@ -416,7 +416,7 @@ class ProcessorSynthesizer:
                 messages=[{"role": "user", "content": prompt}]
             )
 
-            response_text = response.content[0].text.strip()
+            response_text = extract_text(response).strip()
 
             # Extract JSON from response
             mapping = self._extract_json(response_text)
@@ -455,7 +455,7 @@ class ProcessorSynthesizer:
                 messages=[{"role": "user", "content": prompt}]
             )
 
-            template = response.content[0].text.strip()
+            template = extract_text(response).strip()
 
             # Remove markdown code blocks if present
             if template.startswith("```jinja") or template.startswith("```"):
@@ -516,7 +516,7 @@ class ProcessorSynthesizer:
                 messages=[{"role": "user", "content": prompt}]
             )
 
-            response_text = response.content[0].text
+            response_text = extract_text(response)
             logger.debug(f"LLM response length: {len(response_text)} chars")
 
             # Parse JSON response

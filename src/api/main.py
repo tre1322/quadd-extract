@@ -23,7 +23,7 @@ from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
 import uuid
 
-from src.model_config import resolve_model
+from src.model_config import extract_text, resolve_model
 from src.extractors.hybrid import HybridExtractor, VisionExtractor
 from src.schemas.common import DocumentType, ExtractionResult, RenderResult
 from src.templates.renderer import TemplateRenderer
@@ -1050,7 +1050,7 @@ Filtered results (ONLY entities from {entity_list}):"""
             }]
         )
 
-        final_results = filter_response.content[0].text
+        final_results = extract_text(filter_response)
         total_input_tokens += filter_response.usage.input_tokens
         total_output_tokens += filter_response.usage.output_tokens
 

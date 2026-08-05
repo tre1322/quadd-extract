@@ -32,7 +32,7 @@ import anthropic
 import fitz  # PyMuPDF
 from PIL import Image
 
-from src.model_config import resolve_model
+from src.model_config import extract_text, resolve_model
 from src.schemas.common import DocumentType, ExtractionResult
 
 logger = logging.getLogger(__name__)
@@ -542,7 +542,7 @@ class HybridExtractor:
                 messages=[{"role": "user", "content": content}]
             )
             
-            response_text = response.content[0].text
+            response_text = extract_text(response)
             tokens_used = response.usage.input_tokens + response.usage.output_tokens
             
             # Parse JSON from response - handle various formats

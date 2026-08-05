@@ -27,9 +27,35 @@ from io import BytesIO
 from PIL import Image
 import pytesseract
 
-from src.model_config import resolve_model
+from src.model_config import extract_text, resolve_model
 
 logger = logging.getLogger(__name__)
+
+
+def _strip_code_fences(text: str) -> str:
+    """
+    Remove a Markdown code fence that wraps the ENTIRE transformed output.
+
+    The transform prompts show the example input and desired output as blocks,
+    which nudges the model into echoing a ``` fence around its answer. This
+    output goes straight into newspaper copy, so a stray fence means literal
+    backticks in print.
+
+    Only strips a fence enclosing the whole response -- never fences that are
+    part of the content. Deliberately NOT done inside model_config.extract_text:
+    the JSON callers in extractors/ do their own ```json parsing and would break
+    if the fences were stripped out from under them.
+    """
+    stripped = text.strip()
+    if not stripped.startswith("```"):
+        return stripped
+
+    lines = stripped.splitlines()
+    if len(lines) < 3 or not lines[-1].strip().startswith("```"):
+        return stripped
+
+    # First line may carry a language tag (```text); drop it and the closer.
+    return "\n".join(lines[1:-1]).strip()
 
 
 class SimpleTransformer:
@@ -514,7 +540,7 @@ class SimpleTransformer:
             }]
         )
 
-        output_text = response.content[0].text
+        output_text = _strip_code_fences(extract_text(response))
 
         logger.info(f"Transformation complete: {len(output_text)} chars output")
 
@@ -574,7 +600,7 @@ class SimpleTransformer:
             }]
         )
 
-        output_text = response.content[0].text
+        output_text = _strip_code_fences(extract_text(response))
 
         logger.info(f"Text transformation complete: {len(output_text)} chars output")
 
