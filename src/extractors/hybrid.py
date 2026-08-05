@@ -32,6 +32,7 @@ import anthropic
 import fitz  # PyMuPDF
 from PIL import Image
 
+from src.model_config import resolve_model
 from src.schemas.common import DocumentType, ExtractionResult
 
 logger = logging.getLogger(__name__)
@@ -303,13 +304,14 @@ class HybridExtractor:
     - Claude Vision for structural understanding
     """
     
-    def __init__(self, api_key: Optional[str] = None, model: str = "claude-sonnet-4-20250514"):
+    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
         """
         Initialize the universal extractor.
-        
+
         Args:
             api_key: Anthropic API key (uses ANTHROPIC_API_KEY env var if not provided)
-            model: Claude model to use for structure analysis
+            model: Claude model to use for structure analysis (uses ANTHROPIC_MODEL /
+                CLAUDE_MODEL env var, then the default in model_config, if not provided)
         """
         # Resolve API key
         resolved_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
@@ -323,8 +325,8 @@ class HybridExtractor:
             )
         
         self.client = anthropic.Anthropic(api_key=resolved_key)
-        self.model = model
-        logger.info(f"HybridExtractor initialized with model: {model}")
+        self.model = resolve_model(model)
+        logger.info(f"HybridExtractor initialized with model: {self.model}")
         logger.info(f"Tesseract OCR available: {TESSERACT_AVAILABLE}")
     
     # =========================================================================

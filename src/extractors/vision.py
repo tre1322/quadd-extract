@@ -16,6 +16,7 @@ import anthropic
 import fitz  # PyMuPDF
 from PIL import Image
 
+from src.model_config import resolve_model
 from src.extractors.base import BaseExtractor
 from src.schemas.common import DocumentType, ExtractionResult
 
@@ -453,13 +454,14 @@ class VisionExtractor(BaseExtractor):
     Uses Claude's multimodal capabilities to see and understand documents.
     """
     
-    def __init__(self, api_key: Optional[str] = None, model: str = "claude-sonnet-4-20250514"):
+    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
         """
         Initialize the Vision extractor.
-        
+
         Args:
             api_key: Anthropic API key (uses ANTHROPIC_API_KEY env var if not provided)
-            model: Model to use for extraction
+            model: Model to use for extraction (uses ANTHROPIC_MODEL / CLAUDE_MODEL
+                env var, then the default in model_config, if not provided)
         """
         import os
         
@@ -481,8 +483,8 @@ class VisionExtractor(BaseExtractor):
             )
         
         self.client = anthropic.Anthropic(api_key=resolved_key)
-        self.model = model
-        logger.info(f"VisionExtractor initialized with model: {model}")
+        self.model = resolve_model(model)
+        logger.info(f"VisionExtractor initialized with model: {self.model}")
     
     def _pdf_to_images(self, pdf_bytes: bytes, dpi: int = 200) -> list[Image.Image]:
         """Convert PDF pages to PIL Images."""

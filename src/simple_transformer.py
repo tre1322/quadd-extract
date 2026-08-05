@@ -27,6 +27,8 @@ from io import BytesIO
 from PIL import Image
 import pytesseract
 
+from src.model_config import resolve_model
+
 logger = logging.getLogger(__name__)
 
 
@@ -504,7 +506,7 @@ class SimpleTransformer:
         # Call Claude API
         logger.info(f"Calling Claude for transformation ({file_type})...")
         response = self.client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model=resolve_model(),
             max_tokens=4000,
             messages=[{
                 "role": "user",
@@ -564,7 +566,7 @@ class SimpleTransformer:
         # Call Claude API (text only, no vision)
         logger.info("Calling Claude for text transformation...")
         response = self.client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model=resolve_model(),
             max_tokens=4000,
             messages=[{
                 "role": "user",

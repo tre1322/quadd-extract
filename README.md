@@ -170,7 +170,7 @@ quadd-extract/
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `ANTHROPIC_API_KEY` | Yes | Claude API key |
-| `ANTHROPIC_MODEL` | No | Claude model (default: claude-sonnet-4-20250514) |
+| `ANTHROPIC_MODEL` | No | Claude model (default: `DEFAULT_CLAUDE_MODEL` in `src/model_config.py`). `CLAUDE_MODEL` is also accepted; `ANTHROPIC_MODEL` takes precedence. |
 
 ## Without Tesseract
 

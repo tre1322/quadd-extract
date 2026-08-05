@@ -15,6 +15,7 @@ from typing import Optional
 
 import anthropic
 
+from src.model_config import resolve_model
 from src.ir.document_ir import DocumentIR
 from src.processors.models import Processor, Anchor, Region, ExtractionOp, Calculation, Validation
 from src.processors.executor import ProcessorExecutor
@@ -344,20 +345,21 @@ class ProcessorSynthesizer:
     that can be applied to similar documents.
     """
 
-    def __init__(self, api_key: Optional[str] = None, model: str = "claude-sonnet-4-20250514"):
+    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
         """
         Initialize synthesizer.
 
         Args:
             api_key: Anthropic API key (uses ANTHROPIC_API_KEY env var if not provided)
-            model: Claude model to use for rule generation
+            model: Claude model to use for rule generation (uses ANTHROPIC_MODEL /
+                CLAUDE_MODEL env var, then the default in model_config, if not provided)
         """
         resolved_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
         if not resolved_key:
             raise ValueError("ANTHROPIC_API_KEY required for ProcessorSynthesizer")
 
         self.client = anthropic.Anthropic(api_key=resolved_key)
-        self.model = model
+        self.model = resolve_model(model)
         self.executor = ProcessorExecutor()
 
     async def synthesize_field_mapping(

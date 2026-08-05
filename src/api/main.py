@@ -23,6 +23,7 @@ from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
 import uuid
 
+from src.model_config import resolve_model
 from src.extractors.hybrid import HybridExtractor, VisionExtractor
 from src.schemas.common import DocumentType, ExtractionResult, RenderResult
 from src.templates.renderer import TemplateRenderer
@@ -1041,7 +1042,7 @@ Filtered results (ONLY entities from {entity_list}):"""
 
         client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
         filter_response = client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model=resolve_model(),
             max_tokens=4096,
             messages=[{
                 "role": "user",

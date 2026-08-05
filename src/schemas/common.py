@@ -9,6 +9,8 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
+from src.model_config import resolve_model
+
 
 class DocumentType(str, Enum):
     """Supported document types."""
@@ -54,7 +56,7 @@ class ExtractionResult(BaseModel):
     # Metadata
     source_filename: Optional[str] = None
     extraction_timestamp: datetime = Field(default_factory=datetime.utcnow)
-    model_used: str = "claude-sonnet-4-20250514"
+    model_used: str = Field(default_factory=resolve_model)
     tokens_used: Optional[int] = None
 
 
