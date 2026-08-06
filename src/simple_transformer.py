@@ -27,7 +27,7 @@ from io import BytesIO
 from PIL import Image
 import pytesseract
 
-from src.model_config import extract_text, resolve_model
+from src.model_config import THINKING_DISABLED, extract_text, resolve_model
 
 logger = logging.getLogger(__name__)
 
@@ -533,7 +533,8 @@ class SimpleTransformer:
         logger.info(f"Calling Claude for transformation ({file_type})...")
         response = self.client.messages.create(
             model=resolve_model(),
-            max_tokens=4000,
+            max_tokens=16000,
+            thinking=THINKING_DISABLED,
             messages=[{
                 "role": "user",
                 "content": content
@@ -593,7 +594,8 @@ class SimpleTransformer:
         logger.info("Calling Claude for text transformation...")
         response = self.client.messages.create(
             model=resolve_model(),
-            max_tokens=4000,
+            max_tokens=16000,
+            thinking=THINKING_DISABLED,
             messages=[{
                 "role": "user",
                 "content": prompt

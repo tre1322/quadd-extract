@@ -32,7 +32,7 @@ import anthropic
 import fitz  # PyMuPDF
 from PIL import Image
 
-from src.model_config import extract_text, resolve_model
+from src.model_config import THINKING_DISABLED, extract_text, resolve_model
 from src.schemas.common import DocumentType, ExtractionResult
 
 logger = logging.getLogger(__name__)
@@ -539,6 +539,7 @@ class HybridExtractor:
             response = self.client.messages.create(
                 model=self.model,
                 max_tokens=8192,
+                thinking=THINKING_DISABLED,
                 messages=[{"role": "user", "content": content}]
             )
             

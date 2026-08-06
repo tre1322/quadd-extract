@@ -16,7 +16,7 @@ import anthropic
 import fitz  # PyMuPDF
 from PIL import Image
 
-from src.model_config import extract_text, resolve_model
+from src.model_config import THINKING_DISABLED, extract_text, resolve_model
 from src.extractors.base import BaseExtractor
 from src.schemas.common import DocumentType, ExtractionResult
 
@@ -597,6 +597,7 @@ class VisionExtractor(BaseExtractor):
             response = self.client.messages.create(
                 model=self.model,
                 max_tokens=50,
+                thinking=THINKING_DISABLED,
                 messages=[{"role": "user", "content": content}]
             )
             
@@ -645,6 +646,7 @@ class VisionExtractor(BaseExtractor):
             response = self.client.messages.create(
                 model=self.model,
                 max_tokens=8000,
+                thinking=THINKING_DISABLED,
                 messages=[{"role": "user", "content": content}]
             )
             
@@ -714,6 +716,7 @@ Return ONLY valid JSON matching this schema, no markdown formatting.
             response = self.client.messages.create(
                 model=self.model,
                 max_tokens=8000,
+                thinking=THINKING_DISABLED,
                 messages=[{"role": "user", "content": content}]
             )
             

@@ -15,7 +15,7 @@ from typing import Optional
 
 import anthropic
 
-from src.model_config import extract_text, resolve_model
+from src.model_config import THINKING_DISABLED, extract_text, resolve_model
 from src.ir.document_ir import DocumentIR
 from src.processors.models import Processor, Anchor, Region, ExtractionOp, Calculation, Validation
 from src.processors.executor import ProcessorExecutor
@@ -413,6 +413,7 @@ class ProcessorSynthesizer:
             response = self.client.messages.create(
                 model=self.model,
                 max_tokens=2048,
+                thinking=THINKING_DISABLED,
                 messages=[{"role": "user", "content": prompt}]
             )
 
@@ -452,6 +453,7 @@ class ProcessorSynthesizer:
             response = self.client.messages.create(
                 model=self.model,
                 max_tokens=4096,
+                thinking=THINKING_DISABLED,
                 messages=[{"role": "user", "content": prompt}]
             )
 
@@ -513,6 +515,7 @@ class ProcessorSynthesizer:
             response = self.client.messages.create(
                 model=self.model,
                 max_tokens=8192,
+                thinking=THINKING_DISABLED,
                 messages=[{"role": "user", "content": prompt}]
             )
 

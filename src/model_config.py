@@ -28,6 +28,27 @@ from typing import Any, Optional
 # Default used when no environment override is set.
 DEFAULT_CLAUDE_MODEL = "claude-sonnet-5"
 
+# Extended thinking is ON BY DEFAULT on claude-sonnet-5 when the `thinking`
+# parameter is omitted -- a change from claude-sonnet-4, which never thought.
+#
+# This matters because max_tokens is a hard cap on thinking AND response text
+# together. Every max_tokens budget in this app was sized for a non-thinking
+# model, so leaving thinking on lets it consume the whole budget and return a
+# reply with no text block at all:
+#
+#     stop_reason=max_tokens, content=['thinking']
+#
+# These calls do deterministic extraction and template-matching, not open-ended
+# reasoning, so thinking buys nothing here. Disabling it restores the budget
+# contract the max_tokens values were written against.
+#
+# NOTE: `{"type": "disabled"}` is accepted on claude-sonnet-5. It is rejected on
+# some other models (Fable 5 rejects it outright; Opus 5 allows it only at
+# effort "high" or lower), so if ANTHROPIC_MODEL is pointed at one of those,
+# pass THINKING_ADAPTIVE and raise the max_tokens budgets instead.
+THINKING_DISABLED = {"type": "disabled"}
+THINKING_ADAPTIVE = {"type": "adaptive"}
+
 
 def resolve_model(model: Optional[str] = None) -> str:
     """
@@ -67,6 +88,7 @@ def extract_text(response: Any) -> str:
         ValueError: if the reply contains no text block at all.
     """
     blocks = getattr(response, "content", None) or []
+    stop_reason = getattr(response, "stop_reason", "unknown")
     parts = [
         block.text
         for block in blocks
@@ -75,9 +97,25 @@ def extract_text(response: Any) -> str:
 
     if not parts:
         seen = [getattr(b, "type", type(b).__name__) for b in blocks]
+        hint = ""
+        if stop_reason == "max_tokens":
+            hint = (
+                " The token budget was exhausted before any text was produced -- "
+                "raise max_tokens, or disable thinking (see THINKING_DISABLED)."
+            )
         raise ValueError(
             f"Anthropic reply contained no text block (got: {seen or 'empty response'}). "
-            f"stop_reason={getattr(response, 'stop_reason', 'unknown')}"
+            f"stop_reason={stop_reason}.{hint}"
+        )
+
+    # Partial output is worse than no output here: truncated text flows straight
+    # into published copy, where a story that stops mid-sentence looks like real
+    # content. Fail loudly instead.
+    if stop_reason == "max_tokens":
+        raise ValueError(
+            "Anthropic reply was truncated at the max_tokens limit "
+            f"({len(''.join(parts))} chars produced). Raise max_tokens for this "
+            "call rather than using the partial output."
         )
 
     return "".join(parts)
